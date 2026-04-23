@@ -12,7 +12,16 @@ export const Route = createFileRoute('/api/airtable/sync')({
           return r as Response;
         }
         try {
-          const result = await syncFromAirtable();
+          let body: { offset?: string | null; runId?: string | null } = {};
+          try {
+            body = (await request.json()) as typeof body;
+          } catch {
+            body = {};
+          }
+          const result = await syncFromAirtable({
+            offset: body.offset ?? null,
+            runId: body.runId ?? null,
+          });
           return jsonResponse({ ok: true, ...result });
         } catch (e) {
           return jsonResponse(

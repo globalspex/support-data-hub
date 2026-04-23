@@ -159,10 +159,40 @@ function CompaniesPage() {
   const syncAirtable = async () => {
     setSyncing(true);
     try {
-      const res = await apiFetch('/api/airtable/sync', { method: 'POST' }) as {
-        ok: boolean; pulled: number; created: number; updated: number; skippedInactive: number; errors: Array<{ message: string }>;
-      };
-      toast.success(`Airtable: pulled ${res.pulled}, +${res.created} created, ${res.updated} updated, ${res.skippedInactive} inactive skipped${res.errors.length ? `, ${res.errors.length} errors` : ''}`);
+      let offset: string | null = null;
+      let runId: string | null = null;
+      let pulled = 0;
+      let created = 0;
+      let updated = 0;
+      let skippedInactive = 0;
+      let errorCount = 0;
+
+      do {
+        const res = await apiFetch('/api/airtable/sync', {
+          method: 'POST',
+          body: JSON.stringify({ offset, runId }),
+        }) as {
+          ok: boolean;
+          pulled: number;
+          created: number;
+          updated: number;
+          skippedInactive: number;
+          errors: Array<{ message: string }>;
+          done: boolean;
+          nextOffset: string | null;
+          runId: string;
+        };
+
+        runId = res.runId;
+        pulled += res.pulled;
+        created += res.created;
+        updated += res.updated;
+        skippedInactive += res.skippedInactive;
+        errorCount += res.errors.length;
+        offset = res.done ? null : res.nextOffset;
+      } while (offset);
+
+      toast.success(`Airtable: pulled ${pulled}, +${created} created, ${updated} updated, ${skippedInactive} inactive handled${errorCount ? `, ${errorCount} errors` : ''}`);
       await load();
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
     finally { setSyncing(false); }
