@@ -62,6 +62,7 @@ export type Database = {
         Row: {
           account_type: string | null
           active_status: boolean | null
+          airtable_record_id: string | null
           care_plan_type: string | null
           company_name: string | null
           created_at: string
@@ -71,10 +72,12 @@ export type Database = {
           notes: string | null
           source_name: string
           updated_at: string
+          website: string | null
         }
         Insert: {
           account_type?: string | null
           active_status?: boolean | null
+          airtable_record_id?: string | null
           care_plan_type?: string | null
           company_name?: string | null
           created_at?: string
@@ -84,10 +87,12 @@ export type Database = {
           notes?: string | null
           source_name: string
           updated_at?: string
+          website?: string | null
         }
         Update: {
           account_type?: string | null
           active_status?: boolean | null
+          airtable_record_id?: string | null
           care_plan_type?: string | null
           company_name?: string | null
           created_at?: string
@@ -97,6 +102,7 @@ export type Database = {
           notes?: string | null
           source_name?: string
           updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
