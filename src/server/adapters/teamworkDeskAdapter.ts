@@ -3,7 +3,6 @@ import {
   type ConnectionConfig,
   type RawCompany,
   type RawTicket,
-  basicAuthHeader,
   trimBaseUrl,
 } from './types';
 
@@ -11,7 +10,8 @@ async function desk(cfg: ConnectionConfig, path: string): Promise<unknown> {
   const url = `${trimBaseUrl(cfg.baseUrl)}/desk/api/v2${path}`;
   const res = await fetch(url, {
     headers: {
-      Authorization: basicAuthHeader(cfg.token),
+      // Teamwork Desk uses Bearer token auth (not Basic like Teamwork Projects)
+      Authorization: `Bearer ${cfg.token}`,
       Accept: 'application/json',
     },
   });
