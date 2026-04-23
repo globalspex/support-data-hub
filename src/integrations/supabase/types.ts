@@ -23,6 +23,7 @@ export type Database = {
           raw_assigned_id: string | null
           raw_assigned_name: string | null
           source_name: string
+          team_member_id: string | null
           updated_at: string
         }
         Insert: {
@@ -33,6 +34,7 @@ export type Database = {
           raw_assigned_id?: string | null
           raw_assigned_name?: string | null
           source_name: string
+          team_member_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -43,35 +45,56 @@ export type Database = {
           raw_assigned_id?: string | null
           raw_assigned_name?: string | null
           source_name?: string
+          team_member_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "assigned_name_mappings_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       companies: {
         Row: {
+          account_type: string | null
           active_status: boolean | null
+          care_plan_type: string | null
           company_name: string | null
           created_at: string
           external_company_id: string | null
           id: string
+          monthly_included_hours: number
+          notes: string | null
           source_name: string
           updated_at: string
         }
         Insert: {
+          account_type?: string | null
           active_status?: boolean | null
+          care_plan_type?: string | null
           company_name?: string | null
           created_at?: string
           external_company_id?: string | null
           id?: string
+          monthly_included_hours?: number
+          notes?: string | null
           source_name: string
           updated_at?: string
         }
         Update: {
+          account_type?: string | null
           active_status?: boolean | null
+          care_plan_type?: string | null
           company_name?: string | null
           created_at?: string
           external_company_id?: string | null
           id?: string
+          monthly_included_hours?: number
+          notes?: string | null
           source_name?: string
           updated_at?: string
         }
@@ -118,6 +141,30 @@ export type Database = {
           notes?: string | null
           source_name?: string
           status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reporting_settings: {
+        Row: {
+          created_at: string
+          default_date_range: string
+          id: string
+          reportable_time_mode: Database["public"]["Enums"]["reportable_time_mode"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_date_range?: string
+          id?: string
+          reportable_time_mode?: Database["public"]["Enums"]["reportable_time_mode"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_date_range?: string
+          id?: string
+          reportable_time_mode?: Database["public"]["Enums"]["reportable_time_mode"]
           updated_at?: string
         }
         Relationships: []
@@ -170,11 +217,86 @@ export type Database = {
         }
         Relationships: []
       }
+      tag_time_rules: {
+        Row: {
+          active_status: boolean
+          created_at: string
+          hours_value: number
+          id: string
+          notes: string | null
+          stacking_priority: number
+          tag_name: string
+          updated_at: string
+        }
+        Insert: {
+          active_status?: boolean
+          created_at?: string
+          hours_value?: number
+          id?: string
+          notes?: string | null
+          stacking_priority?: number
+          tag_name: string
+          updated_at?: string
+        }
+        Update: {
+          active_status?: boolean
+          created_at?: string
+          hours_value?: number
+          id?: string
+          notes?: string | null
+          stacking_priority?: number
+          tag_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          active_status: boolean
+          billable_rate: number
+          created_at: string
+          department: string | null
+          hourly_cost_rate: number
+          id: string
+          name: string
+          notes: string | null
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          active_status?: boolean
+          billable_rate?: number
+          created_at?: string
+          department?: string | null
+          hourly_cost_rate?: number
+          id?: string
+          name: string
+          notes?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active_status?: boolean
+          billable_rate?: number
+          created_at?: string
+          department?: string | null
+          hourly_cost_rate?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tickets: {
         Row: {
           actual_logged_time: number | null
           assigned_external_id: string | null
           assigned_name_raw: string | null
+          assigned_team_member_id: string | null
+          billable_value: number
+          calculated_tag_time: number
           closed_at_source: string | null
           company_name: string | null
           created_at: string
@@ -182,8 +304,10 @@ export type Database = {
           customer_name: string | null
           external_company_id: string | null
           external_ticket_id: string
+          final_reportable_time: number
           id: string
           inbox: string | null
+          labor_cost: number
           raw_payload: Json | null
           source_system: string
           status: string | null
@@ -198,6 +322,9 @@ export type Database = {
           actual_logged_time?: number | null
           assigned_external_id?: string | null
           assigned_name_raw?: string | null
+          assigned_team_member_id?: string | null
+          billable_value?: number
+          calculated_tag_time?: number
           closed_at_source?: string | null
           company_name?: string | null
           created_at?: string
@@ -205,8 +332,10 @@ export type Database = {
           customer_name?: string | null
           external_company_id?: string | null
           external_ticket_id: string
+          final_reportable_time?: number
           id?: string
           inbox?: string | null
+          labor_cost?: number
           raw_payload?: Json | null
           source_system: string
           status?: string | null
@@ -221,6 +350,9 @@ export type Database = {
           actual_logged_time?: number | null
           assigned_external_id?: string | null
           assigned_name_raw?: string | null
+          assigned_team_member_id?: string | null
+          billable_value?: number
+          calculated_tag_time?: number
           closed_at_source?: string | null
           company_name?: string | null
           created_at?: string
@@ -228,8 +360,10 @@ export type Database = {
           customer_name?: string | null
           external_company_id?: string | null
           external_ticket_id?: string
+          final_reportable_time?: number
           id?: string
           inbox?: string | null
+          labor_cost?: number
           raw_payload?: Json | null
           source_system?: string
           status?: string | null
@@ -240,7 +374,15 @@ export type Database = {
           updated_at?: string
           updated_at_source?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tickets_assigned_team_member_id_fkey"
+            columns: ["assigned_team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -278,6 +420,11 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      reportable_time_mode:
+        | "actual_only"
+        | "tag_only"
+        | "greater_of_actual_or_tag"
+        | "actual_plus_tag"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -406,6 +553,12 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      reportable_time_mode: [
+        "actual_only",
+        "tag_only",
+        "greater_of_actual_or_tag",
+        "actual_plus_tag",
+      ],
     },
   },
 } as const
