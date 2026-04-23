@@ -96,7 +96,7 @@ function SyncRunsPage() {
                     ) : '—'}
                   </TableCell>
                 </TableRow>
-                {open === r.id && r.error_details && (
+                {open === r.id && r.error_details ? (
                   <TableRow>
                     <TableCell colSpan={10}>
                       <pre className="text-xs bg-muted p-3 rounded-md max-h-64 overflow-auto">
@@ -104,7 +104,7 @@ function SyncRunsPage() {
                       </pre>
                     </TableCell>
                   </TableRow>
-                )}
+                ) : null}
               </Fragment>
             ))}
             {rows.length === 0 && !loading && (
