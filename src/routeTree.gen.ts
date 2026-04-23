@@ -9,15 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiTicketsRouteImport } from './routes/api/tickets'
 import { Route as ApiSyncRunsRouteImport } from './routes/api/sync-runs'
 import { Route as ApiIntegrationsRouteImport } from './routes/api/integrations'
 import { Route as ApiCompaniesRouteImport } from './routes/api/companies'
+import { Route as AdminTicketsRouteImport } from './routes/admin.tickets'
+import { Route as AdminSyncRunsRouteImport } from './routes/admin.sync-runs'
+import { Route as AdminIntegrationsRouteImport } from './routes/admin.integrations'
 import { Route as ApiTicketsIdRouteImport } from './routes/api/tickets.$id'
 import { Route as ApiIntegrationsTestRouteImport } from './routes/api/integrations.test'
 import { Route as ApiIntegrationsSyncRouteImport } from './routes/api/integrations.sync'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -43,6 +58,21 @@ const ApiCompaniesRoute = ApiCompaniesRouteImport.update({
   path: '/api/companies',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminTicketsRoute = AdminTicketsRouteImport.update({
+  id: '/tickets',
+  path: '/tickets',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSyncRunsRoute = AdminSyncRunsRouteImport.update({
+  id: '/sync-runs',
+  path: '/sync-runs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminIntegrationsRoute = AdminIntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiTicketsIdRoute = ApiTicketsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -61,6 +91,11 @@ const ApiIntegrationsSyncRoute = ApiIntegrationsSyncRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/login': typeof LoginRoute
+  '/admin/integrations': typeof AdminIntegrationsRoute
+  '/admin/sync-runs': typeof AdminSyncRunsRoute
+  '/admin/tickets': typeof AdminTicketsRoute
   '/api/companies': typeof ApiCompaniesRoute
   '/api/integrations': typeof ApiIntegrationsRouteWithChildren
   '/api/sync-runs': typeof ApiSyncRunsRoute
@@ -71,6 +106,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/login': typeof LoginRoute
+  '/admin/integrations': typeof AdminIntegrationsRoute
+  '/admin/sync-runs': typeof AdminSyncRunsRoute
+  '/admin/tickets': typeof AdminTicketsRoute
   '/api/companies': typeof ApiCompaniesRoute
   '/api/integrations': typeof ApiIntegrationsRouteWithChildren
   '/api/sync-runs': typeof ApiSyncRunsRoute
@@ -82,6 +122,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/login': typeof LoginRoute
+  '/admin/integrations': typeof AdminIntegrationsRoute
+  '/admin/sync-runs': typeof AdminSyncRunsRoute
+  '/admin/tickets': typeof AdminTicketsRoute
   '/api/companies': typeof ApiCompaniesRoute
   '/api/integrations': typeof ApiIntegrationsRouteWithChildren
   '/api/sync-runs': typeof ApiSyncRunsRoute
@@ -94,6 +139,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
+    | '/login'
+    | '/admin/integrations'
+    | '/admin/sync-runs'
+    | '/admin/tickets'
     | '/api/companies'
     | '/api/integrations'
     | '/api/sync-runs'
@@ -104,6 +154,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
+    | '/login'
+    | '/admin/integrations'
+    | '/admin/sync-runs'
+    | '/admin/tickets'
     | '/api/companies'
     | '/api/integrations'
     | '/api/sync-runs'
@@ -114,6 +169,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
+    | '/login'
+    | '/admin/integrations'
+    | '/admin/sync-runs'
+    | '/admin/tickets'
     | '/api/companies'
     | '/api/integrations'
     | '/api/sync-runs'
@@ -125,6 +185,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  LoginRoute: typeof LoginRoute
   ApiCompaniesRoute: typeof ApiCompaniesRoute
   ApiIntegrationsRoute: typeof ApiIntegrationsRouteWithChildren
   ApiSyncRunsRoute: typeof ApiSyncRunsRoute
@@ -133,6 +195,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -168,6 +244,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCompaniesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/tickets': {
+      id: '/admin/tickets'
+      path: '/tickets'
+      fullPath: '/admin/tickets'
+      preLoaderRoute: typeof AdminTicketsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/sync-runs': {
+      id: '/admin/sync-runs'
+      path: '/sync-runs'
+      fullPath: '/admin/sync-runs'
+      preLoaderRoute: typeof AdminSyncRunsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/integrations': {
+      id: '/admin/integrations'
+      path: '/integrations'
+      fullPath: '/admin/integrations'
+      preLoaderRoute: typeof AdminIntegrationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/tickets/$id': {
       id: '/api/tickets/$id'
       path: '/$id'
@@ -191,6 +288,20 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminIntegrationsRoute: typeof AdminIntegrationsRoute
+  AdminSyncRunsRoute: typeof AdminSyncRunsRoute
+  AdminTicketsRoute: typeof AdminTicketsRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminIntegrationsRoute: AdminIntegrationsRoute,
+  AdminSyncRunsRoute: AdminSyncRunsRoute,
+  AdminTicketsRoute: AdminTicketsRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface ApiIntegrationsRouteChildren {
   ApiIntegrationsSyncRoute: typeof ApiIntegrationsSyncRoute
@@ -220,6 +331,8 @@ const ApiTicketsRouteWithChildren = ApiTicketsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  LoginRoute: LoginRoute,
   ApiCompaniesRoute: ApiCompaniesRoute,
   ApiIntegrationsRoute: ApiIntegrationsRouteWithChildren,
   ApiSyncRunsRoute: ApiSyncRunsRoute,
@@ -228,3 +341,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
