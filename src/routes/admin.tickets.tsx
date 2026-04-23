@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,36 +22,47 @@ interface Ticket {
   status: string | null;
   type: string | null;
   assigned_name_raw: string | null;
+  assigned_team_member_id: string | null;
   customer_name: string | null;
   inbox: string | null;
   tags: string[] | null;
   ticket_url: string | null;
   created_at_source: string | null;
   updated_at_source: string | null;
+  actual_logged_time: number | null;
+  calculated_tag_time: number | null;
+  final_reportable_time: number | null;
+  labor_cost: number | null;
+  billable_value: number | null;
 }
+interface Member { id: string; name: string; }
 
 function TicketsPage() {
   const [filters, setFilters] = useState({
-    source_system: '',
-    company_name: '',
-    assigned_name_raw: '',
-    status: '',
-    type: '',
-    inbox: '',
-    tag: '',
-    date_from: '',
-    date_to: '',
+    source_system: '', company_name: '', assigned_name_raw: '',
+    status: '', type: '', inbox: '', tag: '', date_from: '', date_to: '',
   });
   const [rows, setRows] = useState<Ticket[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const memberMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const x of members) m.set(x.id, x.name);
+    return m;
+  }, [members]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
-      const data = (await apiFetch(`/api/tickets?${params.toString()}`)) as Ticket[];
-      setRows(data);
+      const [data, mems] = await Promise.all([
+        apiFetch(`/api/tickets?${params.toString()}`),
+        apiFetch('/api/team-members'),
+      ]);
+      setRows(data as Ticket[]);
+      setMembers((mems as Member[]).map((x) => ({ id: x.id, name: x.name })));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -62,21 +73,21 @@ function TicketsPage() {
   useEffect(() => { load(); }, [load]);
 
   const setF = (k: keyof typeof filters, v: string) => setFilters((p) => ({ ...p, [k]: v }));
+  const num = (n: number | null | undefined, d = 1) => (n === null || n === undefined ? '—' : Number(n).toFixed(d));
+  const money = (n: number | null | undefined) => (n === null || n === undefined ? '—' : `$${Number(n).toFixed(0)}`);
 
   return (
     <div className="space-y-6">
       <Toaster />
       <div>
         <h2 className="text-2xl font-semibold">Tickets</h2>
-        <p className="text-sm text-muted-foreground">Normalized tickets from all enabled sources. Showing up to 200 most recent.</p>
+        <p className="text-sm text-muted-foreground">Normalized tickets with calculated time, cost, and billable value. Showing up to 200 most recent.</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div><Label>Source</Label>
           <select className="w-full h-9 px-2 border rounded-md bg-background" value={filters.source_system} onChange={(e) => setF('source_system', e.target.value)}>
-            <option value="">All</option>
-            <option value="teamwork">Teamwork</option>
-            <option value="teamwork_desk">Teamwork Desk</option>
+            <option value="">All</option><option value="teamwork">Teamwork</option><option value="teamwork_desk">Teamwork Desk</option>
           </select>
         </div>
         <div><Label>Company</Label><Input value={filters.company_name} onChange={(e) => setF('company_name', e.target.value)} /></div>
@@ -94,19 +105,16 @@ function TicketsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Source</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Ext ID</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Assigned</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Inbox</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Updated</TableHead>
-              <TableHead>URL</TableHead>
+              <TableHead>Source</TableHead><TableHead>Company</TableHead><TableHead>Ext ID</TableHead>
+              <TableHead>Title</TableHead><TableHead>Status</TableHead><TableHead>Type</TableHead>
+              <TableHead>Assigned (raw)</TableHead><TableHead>Mapped to</TableHead>
+              <TableHead>Customer</TableHead><TableHead>Inbox</TableHead><TableHead>Tags</TableHead>
+              <TableHead className="text-right">Actual h</TableHead>
+              <TableHead className="text-right">Tag h</TableHead>
+              <TableHead className="text-right">Reportable h</TableHead>
+              <TableHead className="text-right">Labor</TableHead>
+              <TableHead className="text-right">Billable</TableHead>
+              <TableHead>Created</TableHead><TableHead>URL</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -119,16 +127,21 @@ function TicketsPage() {
                 <TableCell>{t.status ?? '—'}</TableCell>
                 <TableCell>{t.type ?? '—'}</TableCell>
                 <TableCell>{t.assigned_name_raw ?? '—'}</TableCell>
+                <TableCell>{t.assigned_team_member_id ? (memberMap.get(t.assigned_team_member_id) ?? '—') : <span className="text-muted-foreground italic">unmapped</span>}</TableCell>
                 <TableCell>{t.customer_name ?? '—'}</TableCell>
                 <TableCell>{t.inbox ?? '—'}</TableCell>
                 <TableCell className="text-xs">{(t.tags ?? []).join(', ')}</TableCell>
+                <TableCell className="text-right">{num(t.actual_logged_time)}</TableCell>
+                <TableCell className="text-right">{num(t.calculated_tag_time)}</TableCell>
+                <TableCell className="text-right font-medium">{num(t.final_reportable_time)}</TableCell>
+                <TableCell className="text-right">{money(t.labor_cost)}</TableCell>
+                <TableCell className="text-right">{money(t.billable_value)}</TableCell>
                 <TableCell className="text-xs">{t.created_at_source?.slice(0, 10) ?? '—'}</TableCell>
-                <TableCell className="text-xs">{t.updated_at_source?.slice(0, 10) ?? '—'}</TableCell>
                 <TableCell>{t.ticket_url ? <a className="text-primary underline" href={t.ticket_url} target="_blank" rel="noreferrer">Open</a> : '—'}</TableCell>
               </TableRow>
             ))}
             {rows.length === 0 && !loading && (
-              <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">No tickets. Configure an integration and run a sync.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={18} className="text-center text-muted-foreground py-8">No tickets. Configure an integration and run a sync.</TableCell></TableRow>
             )}
           </TableBody>
         </Table>

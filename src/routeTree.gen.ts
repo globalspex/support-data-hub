@@ -12,16 +12,35 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ApiTicketsRouteImport } from './routes/api/tickets'
+import { Route as ApiTeamMembersRouteImport } from './routes/api/team-members'
+import { Route as ApiTagRulesRouteImport } from './routes/api/tag-rules'
 import { Route as ApiSyncRunsRouteImport } from './routes/api/sync-runs'
+import { Route as ApiReportingSettingsRouteImport } from './routes/api/reporting-settings'
+import { Route as ApiRecalculateRouteImport } from './routes/api/recalculate'
 import { Route as ApiIntegrationsRouteImport } from './routes/api/integrations'
 import { Route as ApiCompaniesRouteImport } from './routes/api/companies'
+import { Route as ApiAssignedMappingsRouteImport } from './routes/api/assigned-mappings'
 import { Route as AdminTicketsRouteImport } from './routes/admin.tickets'
+import { Route as AdminTeamMembersRouteImport } from './routes/admin.team-members'
+import { Route as AdminTagRulesRouteImport } from './routes/admin.tag-rules'
 import { Route as AdminSyncRunsRouteImport } from './routes/admin.sync-runs'
+import { Route as AdminReportsRouteImport } from './routes/admin.reports'
+import { Route as AdminMappingsRouteImport } from './routes/admin.mappings'
 import { Route as AdminIntegrationsRouteImport } from './routes/admin.integrations'
+import { Route as AdminCompaniesRouteImport } from './routes/admin.companies'
 import { Route as ApiTicketsIdRouteImport } from './routes/api/tickets.$id'
+import { Route as ApiTeamMembersIdRouteImport } from './routes/api/team-members.$id'
+import { Route as ApiTagRulesIdRouteImport } from './routes/api/tag-rules.$id'
+import { Route as ApiReportsTrendsRouteImport } from './routes/api/reports.trends'
+import { Route as ApiReportsSummaryRouteImport } from './routes/api/reports.summary'
+import { Route as ApiReportsByTeamMemberRouteImport } from './routes/api/reports.by-team-member'
+import { Route as ApiReportsByCompanyRouteImport } from './routes/api/reports.by-company'
 import { Route as ApiIntegrationsTestRouteImport } from './routes/api/integrations.test'
 import { Route as ApiIntegrationsSyncRouteImport } from './routes/api/integrations.sync'
+import { Route as ApiCompaniesIdRouteImport } from './routes/api/companies.$id'
+import { Route as ApiAssignedMappingsIdRouteImport } from './routes/api/assigned-mappings.$id'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -38,14 +57,39 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiTicketsRoute = ApiTicketsRouteImport.update({
   id: '/api/tickets',
   path: '/api/tickets',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTeamMembersRoute = ApiTeamMembersRouteImport.update({
+  id: '/api/team-members',
+  path: '/api/team-members',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTagRulesRoute = ApiTagRulesRouteImport.update({
+  id: '/api/tag-rules',
+  path: '/api/tag-rules',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSyncRunsRoute = ApiSyncRunsRouteImport.update({
   id: '/api/sync-runs',
   path: '/api/sync-runs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReportingSettingsRoute = ApiReportingSettingsRouteImport.update({
+  id: '/api/reporting-settings',
+  path: '/api/reporting-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRecalculateRoute = ApiRecalculateRouteImport.update({
+  id: '/api/recalculate',
+  path: '/api/recalculate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIntegrationsRoute = ApiIntegrationsRouteImport.update({
@@ -58,9 +102,24 @@ const ApiCompaniesRoute = ApiCompaniesRouteImport.update({
   path: '/api/companies',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAssignedMappingsRoute = ApiAssignedMappingsRouteImport.update({
+  id: '/api/assigned-mappings',
+  path: '/api/assigned-mappings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminTicketsRoute = AdminTicketsRouteImport.update({
   id: '/tickets',
   path: '/tickets',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTeamMembersRoute = AdminTeamMembersRouteImport.update({
+  id: '/team-members',
+  path: '/team-members',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTagRulesRoute = AdminTagRulesRouteImport.update({
+  id: '/tag-rules',
+  path: '/tag-rules',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminSyncRunsRoute = AdminSyncRunsRouteImport.update({
@@ -68,15 +127,60 @@ const AdminSyncRunsRoute = AdminSyncRunsRouteImport.update({
   path: '/sync-runs',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMappingsRoute = AdminMappingsRouteImport.update({
+  id: '/mappings',
+  path: '/mappings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminIntegrationsRoute = AdminIntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCompaniesRoute = AdminCompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
   getParentRoute: () => AdminRoute,
 } as any)
 const ApiTicketsIdRoute = ApiTicketsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => ApiTicketsRoute,
+} as any)
+const ApiTeamMembersIdRoute = ApiTeamMembersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiTeamMembersRoute,
+} as any)
+const ApiTagRulesIdRoute = ApiTagRulesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiTagRulesRoute,
+} as any)
+const ApiReportsTrendsRoute = ApiReportsTrendsRouteImport.update({
+  id: '/api/reports/trends',
+  path: '/api/reports/trends',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReportsSummaryRoute = ApiReportsSummaryRouteImport.update({
+  id: '/api/reports/summary',
+  path: '/api/reports/summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReportsByTeamMemberRoute = ApiReportsByTeamMemberRouteImport.update({
+  id: '/api/reports/by-team-member',
+  path: '/api/reports/by-team-member',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReportsByCompanyRoute = ApiReportsByCompanyRouteImport.update({
+  id: '/api/reports/by-company',
+  path: '/api/reports/by-company',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIntegrationsTestRoute = ApiIntegrationsTestRouteImport.update({
   id: '/test',
@@ -88,35 +192,82 @@ const ApiIntegrationsSyncRoute = ApiIntegrationsSyncRouteImport.update({
   path: '/sync',
   getParentRoute: () => ApiIntegrationsRoute,
 } as any)
+const ApiCompaniesIdRoute = ApiCompaniesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiCompaniesRoute,
+} as any)
+const ApiAssignedMappingsIdRoute = ApiAssignedMappingsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiAssignedMappingsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin/companies': typeof AdminCompaniesRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
+  '/admin/mappings': typeof AdminMappingsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/sync-runs': typeof AdminSyncRunsRoute
+  '/admin/tag-rules': typeof AdminTagRulesRoute
+  '/admin/team-members': typeof AdminTeamMembersRoute
   '/admin/tickets': typeof AdminTicketsRoute
-  '/api/companies': typeof ApiCompaniesRoute
+  '/api/assigned-mappings': typeof ApiAssignedMappingsRouteWithChildren
+  '/api/companies': typeof ApiCompaniesRouteWithChildren
   '/api/integrations': typeof ApiIntegrationsRouteWithChildren
+  '/api/recalculate': typeof ApiRecalculateRoute
+  '/api/reporting-settings': typeof ApiReportingSettingsRoute
   '/api/sync-runs': typeof ApiSyncRunsRoute
+  '/api/tag-rules': typeof ApiTagRulesRouteWithChildren
+  '/api/team-members': typeof ApiTeamMembersRouteWithChildren
   '/api/tickets': typeof ApiTicketsRouteWithChildren
+  '/admin/': typeof AdminIndexRoute
+  '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
+  '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
+  '/api/reports/by-company': typeof ApiReportsByCompanyRoute
+  '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
+  '/api/reports/summary': typeof ApiReportsSummaryRoute
+  '/api/reports/trends': typeof ApiReportsTrendsRoute
+  '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
+  '/api/team-members/$id': typeof ApiTeamMembersIdRoute
   '/api/tickets/$id': typeof ApiTicketsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin/companies': typeof AdminCompaniesRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
+  '/admin/mappings': typeof AdminMappingsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/sync-runs': typeof AdminSyncRunsRoute
+  '/admin/tag-rules': typeof AdminTagRulesRoute
+  '/admin/team-members': typeof AdminTeamMembersRoute
   '/admin/tickets': typeof AdminTicketsRoute
-  '/api/companies': typeof ApiCompaniesRoute
+  '/api/assigned-mappings': typeof ApiAssignedMappingsRouteWithChildren
+  '/api/companies': typeof ApiCompaniesRouteWithChildren
   '/api/integrations': typeof ApiIntegrationsRouteWithChildren
+  '/api/recalculate': typeof ApiRecalculateRoute
+  '/api/reporting-settings': typeof ApiReportingSettingsRoute
   '/api/sync-runs': typeof ApiSyncRunsRoute
+  '/api/tag-rules': typeof ApiTagRulesRouteWithChildren
+  '/api/team-members': typeof ApiTeamMembersRouteWithChildren
   '/api/tickets': typeof ApiTicketsRouteWithChildren
+  '/admin': typeof AdminIndexRoute
+  '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
+  '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
+  '/api/reports/by-company': typeof ApiReportsByCompanyRoute
+  '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
+  '/api/reports/summary': typeof ApiReportsSummaryRoute
+  '/api/reports/trends': typeof ApiReportsTrendsRoute
+  '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
+  '/api/team-members/$id': typeof ApiTeamMembersIdRoute
   '/api/tickets/$id': typeof ApiTicketsIdRoute
 }
 export interface FileRoutesById {
@@ -124,15 +275,34 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin/companies': typeof AdminCompaniesRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
+  '/admin/mappings': typeof AdminMappingsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/sync-runs': typeof AdminSyncRunsRoute
+  '/admin/tag-rules': typeof AdminTagRulesRoute
+  '/admin/team-members': typeof AdminTeamMembersRoute
   '/admin/tickets': typeof AdminTicketsRoute
-  '/api/companies': typeof ApiCompaniesRoute
+  '/api/assigned-mappings': typeof ApiAssignedMappingsRouteWithChildren
+  '/api/companies': typeof ApiCompaniesRouteWithChildren
   '/api/integrations': typeof ApiIntegrationsRouteWithChildren
+  '/api/recalculate': typeof ApiRecalculateRoute
+  '/api/reporting-settings': typeof ApiReportingSettingsRoute
   '/api/sync-runs': typeof ApiSyncRunsRoute
+  '/api/tag-rules': typeof ApiTagRulesRouteWithChildren
+  '/api/team-members': typeof ApiTeamMembersRouteWithChildren
   '/api/tickets': typeof ApiTicketsRouteWithChildren
+  '/admin/': typeof AdminIndexRoute
+  '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
+  '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
+  '/api/reports/by-company': typeof ApiReportsByCompanyRoute
+  '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
+  '/api/reports/summary': typeof ApiReportsSummaryRoute
+  '/api/reports/trends': typeof ApiReportsTrendsRoute
+  '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
+  '/api/team-members/$id': typeof ApiTeamMembersIdRoute
   '/api/tickets/$id': typeof ApiTicketsIdRoute
 }
 export interface FileRouteTypes {
@@ -141,45 +311,101 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/admin/companies'
     | '/admin/integrations'
+    | '/admin/mappings'
+    | '/admin/reports'
     | '/admin/sync-runs'
+    | '/admin/tag-rules'
+    | '/admin/team-members'
     | '/admin/tickets'
+    | '/api/assigned-mappings'
     | '/api/companies'
     | '/api/integrations'
+    | '/api/recalculate'
+    | '/api/reporting-settings'
     | '/api/sync-runs'
+    | '/api/tag-rules'
+    | '/api/team-members'
     | '/api/tickets'
+    | '/admin/'
+    | '/api/assigned-mappings/$id'
+    | '/api/companies/$id'
     | '/api/integrations/sync'
     | '/api/integrations/test'
+    | '/api/reports/by-company'
+    | '/api/reports/by-team-member'
+    | '/api/reports/summary'
+    | '/api/reports/trends'
+    | '/api/tag-rules/$id'
+    | '/api/team-members/$id'
     | '/api/tickets/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/login'
+    | '/admin/companies'
     | '/admin/integrations'
+    | '/admin/mappings'
+    | '/admin/reports'
     | '/admin/sync-runs'
+    | '/admin/tag-rules'
+    | '/admin/team-members'
     | '/admin/tickets'
+    | '/api/assigned-mappings'
     | '/api/companies'
     | '/api/integrations'
+    | '/api/recalculate'
+    | '/api/reporting-settings'
     | '/api/sync-runs'
+    | '/api/tag-rules'
+    | '/api/team-members'
     | '/api/tickets'
+    | '/admin'
+    | '/api/assigned-mappings/$id'
+    | '/api/companies/$id'
     | '/api/integrations/sync'
     | '/api/integrations/test'
+    | '/api/reports/by-company'
+    | '/api/reports/by-team-member'
+    | '/api/reports/summary'
+    | '/api/reports/trends'
+    | '/api/tag-rules/$id'
+    | '/api/team-members/$id'
     | '/api/tickets/$id'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/login'
+    | '/admin/companies'
     | '/admin/integrations'
+    | '/admin/mappings'
+    | '/admin/reports'
     | '/admin/sync-runs'
+    | '/admin/tag-rules'
+    | '/admin/team-members'
     | '/admin/tickets'
+    | '/api/assigned-mappings'
     | '/api/companies'
     | '/api/integrations'
+    | '/api/recalculate'
+    | '/api/reporting-settings'
     | '/api/sync-runs'
+    | '/api/tag-rules'
+    | '/api/team-members'
     | '/api/tickets'
+    | '/admin/'
+    | '/api/assigned-mappings/$id'
+    | '/api/companies/$id'
     | '/api/integrations/sync'
     | '/api/integrations/test'
+    | '/api/reports/by-company'
+    | '/api/reports/by-team-member'
+    | '/api/reports/summary'
+    | '/api/reports/trends'
+    | '/api/tag-rules/$id'
+    | '/api/team-members/$id'
     | '/api/tickets/$id'
   fileRoutesById: FileRoutesById
 }
@@ -187,10 +413,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
-  ApiCompaniesRoute: typeof ApiCompaniesRoute
+  ApiAssignedMappingsRoute: typeof ApiAssignedMappingsRouteWithChildren
+  ApiCompaniesRoute: typeof ApiCompaniesRouteWithChildren
   ApiIntegrationsRoute: typeof ApiIntegrationsRouteWithChildren
+  ApiRecalculateRoute: typeof ApiRecalculateRoute
+  ApiReportingSettingsRoute: typeof ApiReportingSettingsRoute
   ApiSyncRunsRoute: typeof ApiSyncRunsRoute
+  ApiTagRulesRoute: typeof ApiTagRulesRouteWithChildren
+  ApiTeamMembersRoute: typeof ApiTeamMembersRouteWithChildren
   ApiTicketsRoute: typeof ApiTicketsRouteWithChildren
+  ApiReportsByCompanyRoute: typeof ApiReportsByCompanyRoute
+  ApiReportsByTeamMemberRoute: typeof ApiReportsByTeamMemberRoute
+  ApiReportsSummaryRoute: typeof ApiReportsSummaryRoute
+  ApiReportsTrendsRoute: typeof ApiReportsTrendsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -216,6 +451,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/tickets': {
       id: '/api/tickets'
       path: '/api/tickets'
@@ -223,11 +465,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTicketsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/team-members': {
+      id: '/api/team-members'
+      path: '/api/team-members'
+      fullPath: '/api/team-members'
+      preLoaderRoute: typeof ApiTeamMembersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tag-rules': {
+      id: '/api/tag-rules'
+      path: '/api/tag-rules'
+      fullPath: '/api/tag-rules'
+      preLoaderRoute: typeof ApiTagRulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/sync-runs': {
       id: '/api/sync-runs'
       path: '/api/sync-runs'
       fullPath: '/api/sync-runs'
       preLoaderRoute: typeof ApiSyncRunsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reporting-settings': {
+      id: '/api/reporting-settings'
+      path: '/api/reporting-settings'
+      fullPath: '/api/reporting-settings'
+      preLoaderRoute: typeof ApiReportingSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/recalculate': {
+      id: '/api/recalculate'
+      path: '/api/recalculate'
+      fullPath: '/api/recalculate'
+      preLoaderRoute: typeof ApiRecalculateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/integrations': {
@@ -244,11 +514,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCompaniesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/assigned-mappings': {
+      id: '/api/assigned-mappings'
+      path: '/api/assigned-mappings'
+      fullPath: '/api/assigned-mappings'
+      preLoaderRoute: typeof ApiAssignedMappingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/tickets': {
       id: '/admin/tickets'
       path: '/tickets'
       fullPath: '/admin/tickets'
       preLoaderRoute: typeof AdminTicketsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/team-members': {
+      id: '/admin/team-members'
+      path: '/team-members'
+      fullPath: '/admin/team-members'
+      preLoaderRoute: typeof AdminTeamMembersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/tag-rules': {
+      id: '/admin/tag-rules'
+      path: '/tag-rules'
+      fullPath: '/admin/tag-rules'
+      preLoaderRoute: typeof AdminTagRulesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/sync-runs': {
@@ -258,11 +549,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSyncRunsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/mappings': {
+      id: '/admin/mappings'
+      path: '/mappings'
+      fullPath: '/admin/mappings'
+      preLoaderRoute: typeof AdminMappingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/integrations': {
       id: '/admin/integrations'
       path: '/integrations'
       fullPath: '/admin/integrations'
       preLoaderRoute: typeof AdminIntegrationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/companies': {
+      id: '/admin/companies'
+      path: '/companies'
+      fullPath: '/admin/companies'
+      preLoaderRoute: typeof AdminCompaniesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/api/tickets/$id': {
@@ -271,6 +583,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/tickets/$id'
       preLoaderRoute: typeof ApiTicketsIdRouteImport
       parentRoute: typeof ApiTicketsRoute
+    }
+    '/api/team-members/$id': {
+      id: '/api/team-members/$id'
+      path: '/$id'
+      fullPath: '/api/team-members/$id'
+      preLoaderRoute: typeof ApiTeamMembersIdRouteImport
+      parentRoute: typeof ApiTeamMembersRoute
+    }
+    '/api/tag-rules/$id': {
+      id: '/api/tag-rules/$id'
+      path: '/$id'
+      fullPath: '/api/tag-rules/$id'
+      preLoaderRoute: typeof ApiTagRulesIdRouteImport
+      parentRoute: typeof ApiTagRulesRoute
+    }
+    '/api/reports/trends': {
+      id: '/api/reports/trends'
+      path: '/api/reports/trends'
+      fullPath: '/api/reports/trends'
+      preLoaderRoute: typeof ApiReportsTrendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reports/summary': {
+      id: '/api/reports/summary'
+      path: '/api/reports/summary'
+      fullPath: '/api/reports/summary'
+      preLoaderRoute: typeof ApiReportsSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reports/by-team-member': {
+      id: '/api/reports/by-team-member'
+      path: '/api/reports/by-team-member'
+      fullPath: '/api/reports/by-team-member'
+      preLoaderRoute: typeof ApiReportsByTeamMemberRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reports/by-company': {
+      id: '/api/reports/by-company'
+      path: '/api/reports/by-company'
+      fullPath: '/api/reports/by-company'
+      preLoaderRoute: typeof ApiReportsByCompanyRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/integrations/test': {
       id: '/api/integrations/test'
@@ -286,22 +640,71 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIntegrationsSyncRouteImport
       parentRoute: typeof ApiIntegrationsRoute
     }
+    '/api/companies/$id': {
+      id: '/api/companies/$id'
+      path: '/$id'
+      fullPath: '/api/companies/$id'
+      preLoaderRoute: typeof ApiCompaniesIdRouteImport
+      parentRoute: typeof ApiCompaniesRoute
+    }
+    '/api/assigned-mappings/$id': {
+      id: '/api/assigned-mappings/$id'
+      path: '/$id'
+      fullPath: '/api/assigned-mappings/$id'
+      preLoaderRoute: typeof ApiAssignedMappingsIdRouteImport
+      parentRoute: typeof ApiAssignedMappingsRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminCompaniesRoute: typeof AdminCompaniesRoute
   AdminIntegrationsRoute: typeof AdminIntegrationsRoute
+  AdminMappingsRoute: typeof AdminMappingsRoute
+  AdminReportsRoute: typeof AdminReportsRoute
   AdminSyncRunsRoute: typeof AdminSyncRunsRoute
+  AdminTagRulesRoute: typeof AdminTagRulesRoute
+  AdminTeamMembersRoute: typeof AdminTeamMembersRoute
   AdminTicketsRoute: typeof AdminTicketsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminCompaniesRoute: AdminCompaniesRoute,
   AdminIntegrationsRoute: AdminIntegrationsRoute,
+  AdminMappingsRoute: AdminMappingsRoute,
+  AdminReportsRoute: AdminReportsRoute,
   AdminSyncRunsRoute: AdminSyncRunsRoute,
+  AdminTagRulesRoute: AdminTagRulesRoute,
+  AdminTeamMembersRoute: AdminTeamMembersRoute,
   AdminTicketsRoute: AdminTicketsRoute,
+  AdminIndexRoute: AdminIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface ApiAssignedMappingsRouteChildren {
+  ApiAssignedMappingsIdRoute: typeof ApiAssignedMappingsIdRoute
+}
+
+const ApiAssignedMappingsRouteChildren: ApiAssignedMappingsRouteChildren = {
+  ApiAssignedMappingsIdRoute: ApiAssignedMappingsIdRoute,
+}
+
+const ApiAssignedMappingsRouteWithChildren =
+  ApiAssignedMappingsRoute._addFileChildren(ApiAssignedMappingsRouteChildren)
+
+interface ApiCompaniesRouteChildren {
+  ApiCompaniesIdRoute: typeof ApiCompaniesIdRoute
+}
+
+const ApiCompaniesRouteChildren: ApiCompaniesRouteChildren = {
+  ApiCompaniesIdRoute: ApiCompaniesIdRoute,
+}
+
+const ApiCompaniesRouteWithChildren = ApiCompaniesRoute._addFileChildren(
+  ApiCompaniesRouteChildren,
+)
 
 interface ApiIntegrationsRouteChildren {
   ApiIntegrationsSyncRoute: typeof ApiIntegrationsSyncRoute
@@ -315,6 +718,30 @@ const ApiIntegrationsRouteChildren: ApiIntegrationsRouteChildren = {
 
 const ApiIntegrationsRouteWithChildren = ApiIntegrationsRoute._addFileChildren(
   ApiIntegrationsRouteChildren,
+)
+
+interface ApiTagRulesRouteChildren {
+  ApiTagRulesIdRoute: typeof ApiTagRulesIdRoute
+}
+
+const ApiTagRulesRouteChildren: ApiTagRulesRouteChildren = {
+  ApiTagRulesIdRoute: ApiTagRulesIdRoute,
+}
+
+const ApiTagRulesRouteWithChildren = ApiTagRulesRoute._addFileChildren(
+  ApiTagRulesRouteChildren,
+)
+
+interface ApiTeamMembersRouteChildren {
+  ApiTeamMembersIdRoute: typeof ApiTeamMembersIdRoute
+}
+
+const ApiTeamMembersRouteChildren: ApiTeamMembersRouteChildren = {
+  ApiTeamMembersIdRoute: ApiTeamMembersIdRoute,
+}
+
+const ApiTeamMembersRouteWithChildren = ApiTeamMembersRoute._addFileChildren(
+  ApiTeamMembersRouteChildren,
 )
 
 interface ApiTicketsRouteChildren {
@@ -333,10 +760,19 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
-  ApiCompaniesRoute: ApiCompaniesRoute,
+  ApiAssignedMappingsRoute: ApiAssignedMappingsRouteWithChildren,
+  ApiCompaniesRoute: ApiCompaniesRouteWithChildren,
   ApiIntegrationsRoute: ApiIntegrationsRouteWithChildren,
+  ApiRecalculateRoute: ApiRecalculateRoute,
+  ApiReportingSettingsRoute: ApiReportingSettingsRoute,
   ApiSyncRunsRoute: ApiSyncRunsRoute,
+  ApiTagRulesRoute: ApiTagRulesRouteWithChildren,
+  ApiTeamMembersRoute: ApiTeamMembersRouteWithChildren,
   ApiTicketsRoute: ApiTicketsRouteWithChildren,
+  ApiReportsByCompanyRoute: ApiReportsByCompanyRoute,
+  ApiReportsByTeamMemberRoute: ApiReportsByTeamMemberRoute,
+  ApiReportsSummaryRoute: ApiReportsSummaryRoute,
+  ApiReportsTrendsRoute: ApiReportsTrendsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
