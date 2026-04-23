@@ -41,13 +41,8 @@ function IntegrationCard({ row, onChange }: { row: IntegrationRow; onChange: () 
   const save = async () => {
     setBusy('save');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('/api/integrations', {
+      await apiFetch('/api/integrations', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
         body: JSON.stringify({
           source_name: row.source_name,
           base_url: baseUrl,
@@ -55,20 +50,6 @@ function IntegrationCard({ row, onChange }: { row: IntegrationRow; onChange: () 
           is_enabled: enabled,
         }),
       });
-      // We didn't add POST to /api/integrations; use Supabase directly
-      if (!res.ok) {
-        // Fallback: update directly
-        const update: Record<string, unknown> = {
-          base_url: baseUrl,
-          is_enabled: enabled,
-        };
-        if (token) update.api_key_or_token = token;
-        const { error } = await supabase
-          .from('integration_connections')
-          .update(update)
-          .eq('source_name', row.source_name);
-        if (error) throw new Error(error.message);
-      }
       setToken('');
       toast.success('Saved');
       onChange();
