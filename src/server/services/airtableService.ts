@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '@/integrations/supabase/client.server';
 
 const AIRTABLE_API = 'https://api.airtable.com/v0';
-const AIRTABLE_PAGE_SIZE = 50;
+const AIRTABLE_PAGE_SIZE = 10;
 const AIRTABLE_SOURCE = 'airtable';
 
 interface AirtableRecord {
