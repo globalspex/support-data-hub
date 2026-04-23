@@ -17,7 +17,7 @@ export const Route = createFileRoute('/api/tickets')({
         let q = supabaseAdmin
           .from('tickets')
           .select(
-            'id,source_system,external_ticket_id,company_name,ticket_title,status,type,assigned_name_raw,customer_name,inbox,tags,ticket_url,created_at_source,updated_at_source,closed_at_source,actual_logged_time',
+            'id,source_system,external_ticket_id,company_name,ticket_title,status,type,assigned_name_raw,assigned_team_member_id,customer_name,inbox,tags,ticket_url,created_at_source,updated_at_source,closed_at_source,actual_logged_time,calculated_tag_time,final_reportable_time,labor_cost,billable_value',
           )
           .order('created_at_source', { ascending: false, nullsFirst: false })
           .limit(limit);

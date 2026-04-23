@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ApiTicketsRouteImport } from './routes/api/tickets'
 import { Route as ApiTeamMembersRouteImport } from './routes/api/team-members'
 import { Route as ApiTagRulesRouteImport } from './routes/api/tag-rules'
@@ -22,8 +23,13 @@ import { Route as ApiIntegrationsRouteImport } from './routes/api/integrations'
 import { Route as ApiCompaniesRouteImport } from './routes/api/companies'
 import { Route as ApiAssignedMappingsRouteImport } from './routes/api/assigned-mappings'
 import { Route as AdminTicketsRouteImport } from './routes/admin.tickets'
+import { Route as AdminTeamMembersRouteImport } from './routes/admin.team-members'
+import { Route as AdminTagRulesRouteImport } from './routes/admin.tag-rules'
 import { Route as AdminSyncRunsRouteImport } from './routes/admin.sync-runs'
+import { Route as AdminReportsRouteImport } from './routes/admin.reports'
+import { Route as AdminMappingsRouteImport } from './routes/admin.mappings'
 import { Route as AdminIntegrationsRouteImport } from './routes/admin.integrations'
+import { Route as AdminCompaniesRouteImport } from './routes/admin.companies'
 import { Route as ApiTicketsIdRouteImport } from './routes/api/tickets.$id'
 import { Route as ApiTeamMembersIdRouteImport } from './routes/api/team-members.$id'
 import { Route as ApiTagRulesIdRouteImport } from './routes/api/tag-rules.$id'
@@ -50,6 +56,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const ApiTicketsRoute = ApiTicketsRouteImport.update({
   id: '/api/tickets',
@@ -101,14 +112,39 @@ const AdminTicketsRoute = AdminTicketsRouteImport.update({
   path: '/tickets',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminTeamMembersRoute = AdminTeamMembersRouteImport.update({
+  id: '/team-members',
+  path: '/team-members',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTagRulesRoute = AdminTagRulesRouteImport.update({
+  id: '/tag-rules',
+  path: '/tag-rules',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSyncRunsRoute = AdminSyncRunsRouteImport.update({
   id: '/sync-runs',
   path: '/sync-runs',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMappingsRoute = AdminMappingsRouteImport.update({
+  id: '/mappings',
+  path: '/mappings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminIntegrationsRoute = AdminIntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCompaniesRoute = AdminCompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
   getParentRoute: () => AdminRoute,
 } as any)
 const ApiTicketsIdRoute = ApiTicketsIdRouteImport.update({
@@ -171,8 +207,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin/companies': typeof AdminCompaniesRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
+  '/admin/mappings': typeof AdminMappingsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/sync-runs': typeof AdminSyncRunsRoute
+  '/admin/tag-rules': typeof AdminTagRulesRoute
+  '/admin/team-members': typeof AdminTeamMembersRoute
   '/admin/tickets': typeof AdminTicketsRoute
   '/api/assigned-mappings': typeof ApiAssignedMappingsRouteWithChildren
   '/api/companies': typeof ApiCompaniesRouteWithChildren
@@ -183,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/api/tag-rules': typeof ApiTagRulesRouteWithChildren
   '/api/team-members': typeof ApiTeamMembersRouteWithChildren
   '/api/tickets': typeof ApiTicketsRouteWithChildren
+  '/admin/': typeof AdminIndexRoute
   '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
@@ -197,10 +239,14 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin/companies': typeof AdminCompaniesRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
+  '/admin/mappings': typeof AdminMappingsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/sync-runs': typeof AdminSyncRunsRoute
+  '/admin/tag-rules': typeof AdminTagRulesRoute
+  '/admin/team-members': typeof AdminTeamMembersRoute
   '/admin/tickets': typeof AdminTicketsRoute
   '/api/assigned-mappings': typeof ApiAssignedMappingsRouteWithChildren
   '/api/companies': typeof ApiCompaniesRouteWithChildren
@@ -211,6 +257,7 @@ export interface FileRoutesByTo {
   '/api/tag-rules': typeof ApiTagRulesRouteWithChildren
   '/api/team-members': typeof ApiTeamMembersRouteWithChildren
   '/api/tickets': typeof ApiTicketsRouteWithChildren
+  '/admin': typeof AdminIndexRoute
   '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
@@ -228,8 +275,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/admin/companies': typeof AdminCompaniesRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
+  '/admin/mappings': typeof AdminMappingsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/sync-runs': typeof AdminSyncRunsRoute
+  '/admin/tag-rules': typeof AdminTagRulesRoute
+  '/admin/team-members': typeof AdminTeamMembersRoute
   '/admin/tickets': typeof AdminTicketsRoute
   '/api/assigned-mappings': typeof ApiAssignedMappingsRouteWithChildren
   '/api/companies': typeof ApiCompaniesRouteWithChildren
@@ -240,6 +292,7 @@ export interface FileRoutesById {
   '/api/tag-rules': typeof ApiTagRulesRouteWithChildren
   '/api/team-members': typeof ApiTeamMembersRouteWithChildren
   '/api/tickets': typeof ApiTicketsRouteWithChildren
+  '/admin/': typeof AdminIndexRoute
   '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
@@ -258,8 +311,13 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/admin/companies'
     | '/admin/integrations'
+    | '/admin/mappings'
+    | '/admin/reports'
     | '/admin/sync-runs'
+    | '/admin/tag-rules'
+    | '/admin/team-members'
     | '/admin/tickets'
     | '/api/assigned-mappings'
     | '/api/companies'
@@ -270,6 +328,7 @@ export interface FileRouteTypes {
     | '/api/tag-rules'
     | '/api/team-members'
     | '/api/tickets'
+    | '/admin/'
     | '/api/assigned-mappings/$id'
     | '/api/companies/$id'
     | '/api/integrations/sync'
@@ -284,10 +343,14 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/login'
+    | '/admin/companies'
     | '/admin/integrations'
+    | '/admin/mappings'
+    | '/admin/reports'
     | '/admin/sync-runs'
+    | '/admin/tag-rules'
+    | '/admin/team-members'
     | '/admin/tickets'
     | '/api/assigned-mappings'
     | '/api/companies'
@@ -298,6 +361,7 @@ export interface FileRouteTypes {
     | '/api/tag-rules'
     | '/api/team-members'
     | '/api/tickets'
+    | '/admin'
     | '/api/assigned-mappings/$id'
     | '/api/companies/$id'
     | '/api/integrations/sync'
@@ -314,8 +378,13 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/admin/companies'
     | '/admin/integrations'
+    | '/admin/mappings'
+    | '/admin/reports'
     | '/admin/sync-runs'
+    | '/admin/tag-rules'
+    | '/admin/team-members'
     | '/admin/tickets'
     | '/api/assigned-mappings'
     | '/api/companies'
@@ -326,6 +395,7 @@ export interface FileRouteTypes {
     | '/api/tag-rules'
     | '/api/team-members'
     | '/api/tickets'
+    | '/admin/'
     | '/api/assigned-mappings/$id'
     | '/api/companies/$id'
     | '/api/integrations/sync'
@@ -380,6 +450,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/api/tickets': {
       id: '/api/tickets'
@@ -451,6 +528,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTicketsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/team-members': {
+      id: '/admin/team-members'
+      path: '/team-members'
+      fullPath: '/admin/team-members'
+      preLoaderRoute: typeof AdminTeamMembersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/tag-rules': {
+      id: '/admin/tag-rules'
+      path: '/tag-rules'
+      fullPath: '/admin/tag-rules'
+      preLoaderRoute: typeof AdminTagRulesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/sync-runs': {
       id: '/admin/sync-runs'
       path: '/sync-runs'
@@ -458,11 +549,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSyncRunsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/mappings': {
+      id: '/admin/mappings'
+      path: '/mappings'
+      fullPath: '/admin/mappings'
+      preLoaderRoute: typeof AdminMappingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/integrations': {
       id: '/admin/integrations'
       path: '/integrations'
       fullPath: '/admin/integrations'
       preLoaderRoute: typeof AdminIntegrationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/companies': {
+      id: '/admin/companies'
+      path: '/companies'
+      fullPath: '/admin/companies'
+      preLoaderRoute: typeof AdminCompaniesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/api/tickets/$id': {
@@ -546,15 +658,27 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminCompaniesRoute: typeof AdminCompaniesRoute
   AdminIntegrationsRoute: typeof AdminIntegrationsRoute
+  AdminMappingsRoute: typeof AdminMappingsRoute
+  AdminReportsRoute: typeof AdminReportsRoute
   AdminSyncRunsRoute: typeof AdminSyncRunsRoute
+  AdminTagRulesRoute: typeof AdminTagRulesRoute
+  AdminTeamMembersRoute: typeof AdminTeamMembersRoute
   AdminTicketsRoute: typeof AdminTicketsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminCompaniesRoute: AdminCompaniesRoute,
   AdminIntegrationsRoute: AdminIntegrationsRoute,
+  AdminMappingsRoute: AdminMappingsRoute,
+  AdminReportsRoute: AdminReportsRoute,
   AdminSyncRunsRoute: AdminSyncRunsRoute,
+  AdminTagRulesRoute: AdminTagRulesRoute,
+  AdminTeamMembersRoute: AdminTeamMembersRoute,
   AdminTicketsRoute: AdminTicketsRoute,
+  AdminIndexRoute: AdminIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
