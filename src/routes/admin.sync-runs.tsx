@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -73,8 +73,8 @@ function SyncRunsPage() {
           </TableHeader>
           <TableBody>
             {rows.map((r) => (
-              <>
-                <TableRow key={r.id}>
+              <Fragment key={r.id}>
+                <TableRow>
                   <TableCell><Badge variant="outline">{r.source_name}</Badge></TableCell>
                   <TableCell>{r.sync_type}</TableCell>
                   <TableCell className="text-xs">{r.started_at}</TableCell>
@@ -97,7 +97,7 @@ function SyncRunsPage() {
                   </TableCell>
                 </TableRow>
                 {open === r.id && r.error_details && (
-                  <TableRow key={r.id + '-d'}>
+                  <TableRow>
                     <TableCell colSpan={10}>
                       <pre className="text-xs bg-muted p-3 rounded-md max-h-64 overflow-auto">
                         {JSON.stringify(r.error_details, null, 2)}
@@ -105,7 +105,7 @@ function SyncRunsPage() {
                     </TableCell>
                   </TableRow>
                 )}
-              </>
+              </Fragment>
             ))}
             {rows.length === 0 && !loading && (
               <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No sync runs yet.</TableCell></TableRow>
