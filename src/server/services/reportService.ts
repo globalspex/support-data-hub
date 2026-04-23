@@ -26,37 +26,29 @@ interface TicketAgg {
   created_at_source: string | null;
 }
 
-function applyFilters<T extends ReturnType<typeof supabaseAdmin.from>>(q: T, f: ReportFilters): T {
-  let r = q;
-  if (f.company) r = r.eq('company_name', f.company) as T;
-  if (f.assigned_team_member) r = r.eq('assigned_team_member_id', f.assigned_team_member) as T;
-  if (f.source_system) r = r.eq('source_system', f.source_system) as T;
-  if (f.status) r = r.eq('status', f.status) as T;
-  if (f.type) r = r.eq('type', f.type) as T;
-  if (f.inbox) r = r.eq('inbox', f.inbox) as T;
-  if (f.tag) r = r.contains('tags', [f.tag]) as T;
-  if (f.date_from) r = r.gte('created_at_source', f.date_from) as T;
-  if (f.date_to) r = r.lte('created_at_source', f.date_to) as T;
-  if (f.year) {
-    const start = `${f.year}-01-01`;
-    const end = `${f.year + 1}-01-01`;
-    r = r.gte('created_at_source', start).lt('created_at_source', end) as T;
-  }
-  if (f.month && f.year) {
-    const m = String(f.month).padStart(2, '0');
-    const startDate = new Date(Date.UTC(f.year, f.month - 1, 1)).toISOString();
-    const endDate = new Date(Date.UTC(f.year, f.month, 1)).toISOString();
-    r = r.gte('created_at_source', startDate).lt('created_at_source', endDate) as T;
-    void m;
-  }
-  return r;
-}
-
 async function fetchTickets(f: ReportFilters): Promise<TicketAgg[]> {
   let q = supabaseAdmin.from('tickets').select(
     'id,company_name,assigned_team_member_id,actual_logged_time,calculated_tag_time,final_reportable_time,labor_cost,billable_value,created_at_source',
   );
-  q = applyFilters(q, f);
+  if (f.company) q = q.eq('company_name', f.company);
+  if (f.assigned_team_member) q = q.eq('assigned_team_member_id', f.assigned_team_member);
+  if (f.source_system) q = q.eq('source_system', f.source_system);
+  if (f.status) q = q.eq('status', f.status);
+  if (f.type) q = q.eq('type', f.type);
+  if (f.inbox) q = q.eq('inbox', f.inbox);
+  if (f.tag) q = q.contains('tags', [f.tag]);
+  if (f.date_from) q = q.gte('created_at_source', f.date_from);
+  if (f.date_to) q = q.lte('created_at_source', f.date_to);
+  if (f.year && !f.month) {
+    const start = `${f.year}-01-01`;
+    const end = `${f.year + 1}-01-01`;
+    q = q.gte('created_at_source', start).lt('created_at_source', end);
+  }
+  if (f.month && f.year) {
+    const startDate = new Date(Date.UTC(f.year, f.month - 1, 1)).toISOString();
+    const endDate = new Date(Date.UTC(f.year, f.month, 1)).toISOString();
+    q = q.gte('created_at_source', startDate).lt('created_at_source', endDate);
+  }
   const { data, error } = await q.limit(50000);
   if (error) throw new Error(error.message);
   return (data ?? []) as TicketAgg[];
