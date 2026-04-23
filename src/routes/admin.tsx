@@ -30,9 +30,15 @@ function AdminLayout() {
     );
   }
 
-  const tabs = [
-    { to: '/admin/integrations', label: 'Integrations' },
+  const tabs: Array<{ to: string; label: string; exact?: boolean }> = [
+    { to: '/admin', label: 'Dashboard', exact: true },
     { to: '/admin/tickets', label: 'Tickets' },
+    { to: '/admin/companies', label: 'Companies' },
+    { to: '/admin/team-members', label: 'Team' },
+    { to: '/admin/tag-rules', label: 'Tag Rules' },
+    { to: '/admin/mappings', label: 'Mappings' },
+    { to: '/admin/reports', label: 'Reports' },
+    { to: '/admin/integrations', label: 'Integrations' },
     { to: '/admin/sync-runs', label: 'Sync Runs' },
   ];
 
@@ -44,7 +50,9 @@ function AdminLayout() {
             <h1 className="font-semibold">Ops Dashboard</h1>
             <nav className="flex gap-1">
               {tabs.map((t) => {
-                const active = location.pathname.startsWith(t.to);
+                const active = t.exact
+                  ? location.pathname === t.to
+                  : location.pathname.startsWith(t.to) && t.to !== '/admin';
                 return (
                   <Link
                     key={t.to}

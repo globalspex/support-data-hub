@@ -3,6 +3,7 @@ import { teamworkAdapter } from '../adapters/teamworkAdapter';
 import { teamworkDeskAdapter } from '../adapters/teamworkDeskAdapter';
 import type { SourceAdapter, SourceName, ConnectionConfig } from '../adapters/types';
 import { normalizeTeamworkTask, normalizeDeskTicket, type NormalizedTicket } from './ticketNormalizer';
+import { recalculate } from './calcService';
 
 const ADAPTERS: Record<SourceName, SourceAdapter> = {
   teamwork: teamworkAdapter,
@@ -138,6 +139,20 @@ export async function runSync(source: SourceName) {
       .from('integration_connections')
       .update({ last_sync_at: new Date().toISOString(), status: status === 'error' ? 'error' : 'ok' })
       .eq('source_name', source);
+
+    // Run scoped recalc after the sync so calculated fields are fresh
+    try {
+      await recalculate({ kind: 'source', source });
+    } catch (recalcErr) {
+      const msg = recalcErr instanceof Error ? recalcErr.message : String(recalcErr);
+      await supabaseAdmin
+        .from('sync_runs')
+        .update({
+          error_count: errors.length + 1,
+          error_details: [...errors, { stage: 'recalc', message: msg }].slice(0, 50),
+        })
+        .eq('id', runRow.id);
+    }
 
     return { runId: runRow.id, received, created, updated, errorCount: errors.length, status };
   } catch (e) {
