@@ -10,33 +10,125 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiTicketsRouteImport } from './routes/api/tickets'
+import { Route as ApiSyncRunsRouteImport } from './routes/api/sync-runs'
+import { Route as ApiIntegrationsRouteImport } from './routes/api/integrations'
+import { Route as ApiCompaniesRouteImport } from './routes/api/companies'
+import { Route as ApiTicketsIdRouteImport } from './routes/api/tickets.$id'
+import { Route as ApiIntegrationsTestRouteImport } from './routes/api/integrations.test'
+import { Route as ApiIntegrationsSyncRouteImport } from './routes/api/integrations.sync'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTicketsRoute = ApiTicketsRouteImport.update({
+  id: '/api/tickets',
+  path: '/api/tickets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSyncRunsRoute = ApiSyncRunsRouteImport.update({
+  id: '/api/sync-runs',
+  path: '/api/sync-runs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIntegrationsRoute = ApiIntegrationsRouteImport.update({
+  id: '/api/integrations',
+  path: '/api/integrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCompaniesRoute = ApiCompaniesRouteImport.update({
+  id: '/api/companies',
+  path: '/api/companies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTicketsIdRoute = ApiTicketsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiTicketsRoute,
+} as any)
+const ApiIntegrationsTestRoute = ApiIntegrationsTestRouteImport.update({
+  id: '/test',
+  path: '/test',
+  getParentRoute: () => ApiIntegrationsRoute,
+} as any)
+const ApiIntegrationsSyncRoute = ApiIntegrationsSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
+  getParentRoute: () => ApiIntegrationsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/companies': typeof ApiCompaniesRoute
+  '/api/integrations': typeof ApiIntegrationsRouteWithChildren
+  '/api/sync-runs': typeof ApiSyncRunsRoute
+  '/api/tickets': typeof ApiTicketsRouteWithChildren
+  '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
+  '/api/integrations/test': typeof ApiIntegrationsTestRoute
+  '/api/tickets/$id': typeof ApiTicketsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/companies': typeof ApiCompaniesRoute
+  '/api/integrations': typeof ApiIntegrationsRouteWithChildren
+  '/api/sync-runs': typeof ApiSyncRunsRoute
+  '/api/tickets': typeof ApiTicketsRouteWithChildren
+  '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
+  '/api/integrations/test': typeof ApiIntegrationsTestRoute
+  '/api/tickets/$id': typeof ApiTicketsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/companies': typeof ApiCompaniesRoute
+  '/api/integrations': typeof ApiIntegrationsRouteWithChildren
+  '/api/sync-runs': typeof ApiSyncRunsRoute
+  '/api/tickets': typeof ApiTicketsRouteWithChildren
+  '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
+  '/api/integrations/test': typeof ApiIntegrationsTestRoute
+  '/api/tickets/$id': typeof ApiTicketsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/api/companies'
+    | '/api/integrations'
+    | '/api/sync-runs'
+    | '/api/tickets'
+    | '/api/integrations/sync'
+    | '/api/integrations/test'
+    | '/api/tickets/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/api/companies'
+    | '/api/integrations'
+    | '/api/sync-runs'
+    | '/api/tickets'
+    | '/api/integrations/sync'
+    | '/api/integrations/test'
+    | '/api/tickets/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/companies'
+    | '/api/integrations'
+    | '/api/sync-runs'
+    | '/api/tickets'
+    | '/api/integrations/sync'
+    | '/api/integrations/test'
+    | '/api/tickets/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiCompaniesRoute: typeof ApiCompaniesRoute
+  ApiIntegrationsRoute: typeof ApiIntegrationsRouteWithChildren
+  ApiSyncRunsRoute: typeof ApiSyncRunsRoute
+  ApiTicketsRoute: typeof ApiTicketsRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -48,12 +140,100 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tickets': {
+      id: '/api/tickets'
+      path: '/api/tickets'
+      fullPath: '/api/tickets'
+      preLoaderRoute: typeof ApiTicketsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sync-runs': {
+      id: '/api/sync-runs'
+      path: '/api/sync-runs'
+      fullPath: '/api/sync-runs'
+      preLoaderRoute: typeof ApiSyncRunsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations': {
+      id: '/api/integrations'
+      path: '/api/integrations'
+      fullPath: '/api/integrations'
+      preLoaderRoute: typeof ApiIntegrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/companies': {
+      id: '/api/companies'
+      path: '/api/companies'
+      fullPath: '/api/companies'
+      preLoaderRoute: typeof ApiCompaniesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tickets/$id': {
+      id: '/api/tickets/$id'
+      path: '/$id'
+      fullPath: '/api/tickets/$id'
+      preLoaderRoute: typeof ApiTicketsIdRouteImport
+      parentRoute: typeof ApiTicketsRoute
+    }
+    '/api/integrations/test': {
+      id: '/api/integrations/test'
+      path: '/test'
+      fullPath: '/api/integrations/test'
+      preLoaderRoute: typeof ApiIntegrationsTestRouteImport
+      parentRoute: typeof ApiIntegrationsRoute
+    }
+    '/api/integrations/sync': {
+      id: '/api/integrations/sync'
+      path: '/sync'
+      fullPath: '/api/integrations/sync'
+      preLoaderRoute: typeof ApiIntegrationsSyncRouteImport
+      parentRoute: typeof ApiIntegrationsRoute
+    }
   }
 }
 
+interface ApiIntegrationsRouteChildren {
+  ApiIntegrationsSyncRoute: typeof ApiIntegrationsSyncRoute
+  ApiIntegrationsTestRoute: typeof ApiIntegrationsTestRoute
+}
+
+const ApiIntegrationsRouteChildren: ApiIntegrationsRouteChildren = {
+  ApiIntegrationsSyncRoute: ApiIntegrationsSyncRoute,
+  ApiIntegrationsTestRoute: ApiIntegrationsTestRoute,
+}
+
+const ApiIntegrationsRouteWithChildren = ApiIntegrationsRoute._addFileChildren(
+  ApiIntegrationsRouteChildren,
+)
+
+interface ApiTicketsRouteChildren {
+  ApiTicketsIdRoute: typeof ApiTicketsIdRoute
+}
+
+const ApiTicketsRouteChildren: ApiTicketsRouteChildren = {
+  ApiTicketsIdRoute: ApiTicketsIdRoute,
+}
+
+const ApiTicketsRouteWithChildren = ApiTicketsRoute._addFileChildren(
+  ApiTicketsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiCompaniesRoute: ApiCompaniesRoute,
+  ApiIntegrationsRoute: ApiIntegrationsRouteWithChildren,
+  ApiSyncRunsRoute: ApiSyncRunsRoute,
+  ApiTicketsRoute: ApiTicketsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
