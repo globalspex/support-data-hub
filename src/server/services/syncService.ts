@@ -107,7 +107,7 @@ export async function runSync(source: SourceName) {
 
         const { error: upErr } = await supabaseAdmin
           .from('tickets')
-          .upsert(normalized, { onConflict: 'source_system,external_ticket_id' });
+          .upsert([normalized], { onConflict: 'source_system,external_ticket_id' });
         if (upErr) throw new Error(upErr.message);
 
         if (existing) updated++;
