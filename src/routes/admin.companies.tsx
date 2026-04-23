@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Settings2 } from 'lucide-react';
+import { Settings2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -32,6 +32,8 @@ interface Company {
   account_type: string | null;
   monthly_included_hours: number;
   care_plan_type: string | null;
+  website: string | null;
+  airtable_record_id: string | null;
   active_status: boolean | null;
   notes: string | null;
 }
@@ -48,11 +50,12 @@ interface Usage {
 }
 
 type ColumnKey =
-  | 'company' | 'source' | 'account' | 'care_plan' | 'included'
-  | 'used' | 'usage_pct' | 'overage' | 'labor' | 'billable' | 'actions';
+  | 'company' | 'website' | 'source' | 'account' | 'care_plan' | 'included'
+  | 'used' | 'usage_pct' | 'overage' | 'labor' | 'billable' | 'active' | 'actions';
 
 const COLUMNS: { key: ColumnKey; label: string }[] = [
   { key: 'company', label: 'Company' },
+  { key: 'website', label: 'Website' },
   { key: 'source', label: 'Source' },
   { key: 'account', label: 'Account' },
   { key: 'care_plan', label: 'Care plan' },
@@ -62,18 +65,28 @@ const COLUMNS: { key: ColumnKey; label: string }[] = [
   { key: 'overage', label: 'Overage' },
   { key: 'labor', label: 'Labor $' },
   { key: 'billable', label: 'Billable $' },
+  { key: 'active', label: 'Active' },
   { key: 'actions', label: 'Actions' },
 ];
 
-const STORAGE_KEY = 'companies.visibleColumns.v1';
+const STORAGE_KEY = 'companies.visibleColumns.v2';
 
 function CompaniesPage() {
   const [rows, setRows] = useState<Company[]>([]);
   const [usage, setUsage] = useState<Map<string, Usage>>(new Map());
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Company | null>(null);
-  const [form, setForm] = useState({ account_type: '', monthly_included_hours: 0, care_plan_type: '', notes: '', active_status: true });
+  const [form, setForm] = useState({
+    account_type: '',
+    monthly_included_hours: 0,
+    care_plan_type: '',
+    website: '',
+    notes: '',
+    active_status: true,
+  });
   const [busy, setBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [activeOnly, setActiveOnly] = useState(true);
 
   const [visible, setVisible] = useState<Record<ColumnKey, boolean>>(() => {
     if (typeof window !== 'undefined') {
@@ -113,6 +126,7 @@ function CompaniesPage() {
       account_type: c.account_type ?? '',
       monthly_included_hours: Number(c.monthly_included_hours ?? 0),
       care_plan_type: c.care_plan_type ?? '',
+      website: c.website ?? '',
       notes: c.notes ?? '',
       active_status: c.active_status !== false,
     });
@@ -122,75 +136,111 @@ function CompaniesPage() {
     if (!editing) return;
     setBusy(true);
     try {
-      await apiFetch(`/api/companies/${editing.id}`, {
+      const res = await apiFetch(`/api/companies/${editing.id}`, {
         method: 'PUT',
         body: JSON.stringify({
           account_type: form.account_type || null,
           monthly_included_hours: Number(form.monthly_included_hours),
           care_plan_type: form.care_plan_type || null,
+          website: form.website || null,
           notes: form.notes || null,
           active_status: form.active_status,
         }),
-      });
-      toast.success('Saved');
+      }) as { ok: boolean; airtable?: { pushed: boolean; error?: string } };
+      if (res.airtable?.pushed) toast.success('Saved & synced to Airtable');
+      else if (res.airtable?.error) toast.success(`Saved (Airtable push failed: ${res.airtable.error})`);
+      else toast.success('Saved');
       setEditing(null);
       await load();
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(false); }
   };
 
+  const syncAirtable = async () => {
+    setSyncing(true);
+    try {
+      const res = await apiFetch('/api/airtable/sync', { method: 'POST' }) as {
+        ok: boolean; pulled: number; created: number; updated: number; skippedInactive: number; errors: Array<{ message: string }>;
+      };
+      toast.success(`Airtable: pulled ${res.pulled}, +${res.created} created, ${res.updated} updated, ${res.skippedInactive} inactive skipped${res.errors.length ? `, ${res.errors.length} errors` : ''}`);
+      await load();
+    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
+    finally { setSyncing(false); }
+  };
+
   const isOn = (k: ColumnKey) => visible[k];
+
+  const filteredRows = useMemo(
+    () => (activeOnly ? rows.filter((r) => r.active_status !== false) : rows),
+    [rows, activeOnly],
+  );
 
   return (
     <div className="space-y-6">
       <Toaster />
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold">Companies</h2>
           <p className="text-sm text-muted-foreground">Set monthly included hours and care plan type per company. Usage is from current sync data.</p>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Settings2 className="h-4 w-4 mr-2" />
-              Columns ({visibleCount}/{COLUMNS.length})
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {COLUMNS.map((c) => (
-              <DropdownMenuCheckboxItem
-                key={c.key}
-                checked={visible[c.key]}
-                onCheckedChange={(v) => setVisible((prev) => ({ ...prev, [c.key]: Boolean(v) }))}
-                onSelect={(e) => e.preventDefault()}
-              >
-                {c.label}
-              </DropdownMenuCheckboxItem>
-            ))}
-            <DropdownMenuSeparator />
-            <div className="px-2 py-1.5 flex gap-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 px-2 text-xs"
-                onClick={() => setVisible(Object.fromEntries(COLUMNS.map((c) => [c.key, true])) as Record<ColumnKey, boolean>)}
-              >
-                Show all
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mr-2">
+            <Switch id="active-only" checked={activeOnly} onCheckedChange={setActiveOnly} />
+            <Label htmlFor="active-only" className="text-sm">Active only</Label>
+          </div>
+          <Button variant="outline" size="sm" onClick={syncAirtable} disabled={syncing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing…' : 'Sync Airtable'}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Settings2 className="h-4 w-4 mr-2" />
+                Columns ({visibleCount}/{COLUMNS.length})
               </Button>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {COLUMNS.map((c) => (
+                <DropdownMenuCheckboxItem
+                  key={c.key}
+                  checked={visible[c.key]}
+                  onCheckedChange={(v) => setVisible((prev) => ({ ...prev, [c.key]: Boolean(v) }))}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  {c.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1.5 flex gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setVisible(Object.fromEntries(COLUMNS.map((c) => [c.key, true])) as Record<ColumnKey, boolean>)}
+                >
+                  Show all
+                </Button>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {editing && (
         <Card>
-          <CardHeader><CardTitle>Edit: {editing.company_name}</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              Edit: {editing.company_name}
+              {editing.airtable_record_id && <Badge variant="secondary">Airtable linked</Badge>}
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div><Label>Account type</Label><Input value={form.account_type} onChange={(e) => setForm({ ...form, account_type: e.target.value })} /></div>
               <div><Label>Care plan type</Label><Input value={form.care_plan_type} onChange={(e) => setForm({ ...form, care_plan_type: e.target.value })} /></div>
+              <div><Label>Website</Label><Input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="example.com" /></div>
               <div><Label>Monthly included hours</Label><Input type="number" step="0.5" value={form.monthly_included_hours} onChange={(e) => setForm({ ...form, monthly_included_hours: Number(e.target.value) })} /></div>
               <div className="flex items-end gap-2"><Switch checked={form.active_status} onCheckedChange={(v) => setForm({ ...form, active_status: v })} /><Label>Active</Label></div>
               <div className="col-span-2 md:col-span-4"><Label>Notes</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
@@ -199,6 +249,9 @@ function CompaniesPage() {
               <Button onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>
               <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
             </div>
+            {editing.airtable_record_id && (
+              <p className="text-xs text-muted-foreground mt-2">Care plan, website, and active status will sync back to Airtable on save.</p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -207,6 +260,7 @@ function CompaniesPage() {
         <Table>
           <TableHeader><TableRow>
             {isOn('company') && <TableHead>Company</TableHead>}
+            {isOn('website') && <TableHead>Website</TableHead>}
             {isOn('source') && <TableHead>Source</TableHead>}
             {isOn('account') && <TableHead>Account</TableHead>}
             {isOn('care_plan') && <TableHead>Care plan</TableHead>}
@@ -216,14 +270,29 @@ function CompaniesPage() {
             {isOn('overage') && <TableHead className="text-right">Overage</TableHead>}
             {isOn('labor') && <TableHead className="text-right">Labor $</TableHead>}
             {isOn('billable') && <TableHead className="text-right">Billable $</TableHead>}
+            {isOn('active') && <TableHead>Active</TableHead>}
             {isOn('actions') && <TableHead></TableHead>}
           </TableRow></TableHeader>
           <TableBody>
-            {rows.map((c) => {
+            {filteredRows.map((c) => {
               const u = c.company_name ? usage.get(c.company_name) : undefined;
               return (
                 <TableRow key={c.id}>
-                  {isOn('company') && <TableCell className="font-medium">{c.company_name ?? '—'}</TableCell>}
+                  {isOn('company') && (
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {c.company_name ?? '—'}
+                        {c.airtable_record_id && <Badge variant="secondary" className="text-[10px]">AT</Badge>}
+                      </div>
+                    </TableCell>
+                  )}
+                  {isOn('website') && (
+                    <TableCell>
+                      {c.website ? (
+                        <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">{c.website}</a>
+                      ) : '—'}
+                    </TableCell>
+                  )}
                   {isOn('source') && <TableCell><Badge variant="outline">{c.source_name}</Badge></TableCell>}
                   {isOn('account') && <TableCell>{c.account_type ?? '—'}</TableCell>}
                   {isOn('care_plan') && <TableCell>{c.care_plan_type ?? '—'}</TableCell>}
@@ -233,11 +302,12 @@ function CompaniesPage() {
                   {isOn('overage') && <TableCell className="text-right">{u ? u.overage_hours.toFixed(1) : '0.0'}</TableCell>}
                   {isOn('labor') && <TableCell className="text-right">${(u?.total_labor_cost ?? 0).toFixed(0)}</TableCell>}
                   {isOn('billable') && <TableCell className="text-right">${(u?.total_billable_value ?? 0).toFixed(0)}</TableCell>}
+                  {isOn('active') && <TableCell>{c.active_status === false ? <Badge variant="outline">Inactive</Badge> : <Badge>Active</Badge>}</TableCell>}
                   {isOn('actions') && <TableCell><Button size="sm" variant="ghost" onClick={() => startEdit(c)}>Edit</Button></TableCell>}
                 </TableRow>
               );
             })}
-            {rows.length === 0 && !loading && (
+            {filteredRows.length === 0 && !loading && (
               <TableRow><TableCell colSpan={visibleCount} className="text-center text-muted-foreground py-8">No companies. Run a sync.</TableCell></TableRow>
             )}
           </TableBody>
