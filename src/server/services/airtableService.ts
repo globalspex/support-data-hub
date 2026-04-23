@@ -1,6 +1,8 @@
 import { supabaseAdmin } from '@/integrations/supabase/client.server';
 
 const AIRTABLE_API = 'https://api.airtable.com/v0';
+const AIRTABLE_PAGE_SIZE = 50;
+const AIRTABLE_SOURCE = 'airtable';
 
 interface AirtableRecord {
   id: string;
@@ -10,6 +12,11 @@ interface AirtableRecord {
 interface AirtableListResponse {
   records: AirtableRecord[];
   offset?: string;
+}
+
+interface AirtableSyncOptions {
+  offset?: string | null;
+  runId?: string | null;
 }
 
 function getConfig() {
@@ -35,23 +42,16 @@ function authHeaders() {
   };
 }
 
-async function listAllRecords(): Promise<AirtableRecord[]> {
-  const all: AirtableRecord[] = [];
-  let offset: string | undefined;
-  do {
-    const url = new URL(tableUrl());
-    url.searchParams.set('pageSize', '100');
-    if (offset) url.searchParams.set('offset', offset);
-    const res = await fetch(url.toString(), { headers: authHeaders() });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Airtable list failed [${res.status}]: ${text}`);
-    }
-    const data = (await res.json()) as AirtableListResponse;
-    all.push(...data.records);
-    offset = data.offset;
-  } while (offset);
-  return all;
+async function listRecordsPage(offset?: string | null): Promise<AirtableListResponse> {
+  const url = new URL(tableUrl());
+  url.searchParams.set('pageSize', String(AIRTABLE_PAGE_SIZE));
+  if (offset) url.searchParams.set('offset', offset);
+  const res = await fetch(url.toString(), { headers: authHeaders() });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Airtable list failed [${res.status}]: ${text}`);
+  }
+  return (await res.json()) as AirtableListResponse;
 }
 
 function str(v: unknown): string | null {
@@ -73,86 +73,166 @@ export interface AirtableSyncResult {
   errors: Array<{ recordId?: string; message: string }>;
 }
 
-export async function syncFromAirtable(): Promise<AirtableSyncResult> {
-  const records = await listAllRecords();
+export interface AirtableSyncProgressResult extends AirtableSyncResult {
+  done: boolean;
+  nextOffset: string | null;
+  runId: string;
+}
+
+async function createSyncRun(): Promise<string> {
+  const { data, error } = await supabaseAdmin
+    .from('sync_runs')
+    .insert({ source_name: AIRTABLE_SOURCE, sync_type: 'manual', status: 'running' })
+    .select('id')
+    .single();
+  if (error || !data) throw new Error(error?.message ?? 'Failed to create Airtable sync run');
+  return data.id;
+}
+
+async function updateSyncRun(runId: string, pageResult: AirtableSyncResult, done: boolean) {
+  const { data: current, error: currentError } = await supabaseAdmin
+    .from('sync_runs')
+    .select('records_received, records_created, records_updated, error_details')
+    .eq('id', runId)
+    .single();
+  if (currentError || !current) throw new Error(currentError?.message ?? 'Failed to load Airtable sync run');
+
+  const priorErrors = Array.isArray(current.error_details) ? current.error_details : [];
+  const nextErrors = [
+    ...priorErrors,
+    ...pageResult.errors.map((error) => ({
+      stage: error.recordId ? `record:${error.recordId}` : 'record',
+      message: error.message,
+    })),
+  ].slice(0, 50);
+
+  const recordsReceived = Number(current.records_received ?? 0) + pageResult.pulled;
+  const recordsCreated = Number(current.records_created ?? 0) + pageResult.created;
+  const recordsUpdated = Number(current.records_updated ?? 0) + pageResult.updated;
+  const status = done ? (nextErrors.length === 0 ? 'success' : recordsReceived > 0 ? 'partial' : 'error') : 'running';
+
+  const { error: updateError } = await supabaseAdmin
+    .from('sync_runs')
+    .update({
+      records_received: recordsReceived,
+      records_created: recordsCreated,
+      records_updated: recordsUpdated,
+      error_count: nextErrors.length,
+      error_details: nextErrors.length ? nextErrors : null,
+      status,
+      finished_at: done ? new Date().toISOString() : null,
+    })
+    .eq('id', runId);
+  if (updateError) throw new Error(updateError.message);
+}
+
+async function failSyncRun(runId: string, pageResult: AirtableSyncResult, message: string) {
+  const fatalErrors = [...pageResult.errors, { message }].map((error) => ({
+    stage: error.recordId ? `record:${error.recordId}` : 'fatal',
+    message: error.message,
+  })).slice(0, 50);
+
+  await supabaseAdmin
+    .from('sync_runs')
+    .update({
+      records_received: pageResult.pulled,
+      records_created: pageResult.created,
+      records_updated: pageResult.updated,
+      error_count: fatalErrors.length,
+      error_details: fatalErrors,
+      status: 'error',
+      finished_at: new Date().toISOString(),
+    })
+    .eq('id', runId);
+}
+
+export async function syncFromAirtable(options: AirtableSyncOptions = {}): Promise<AirtableSyncProgressResult> {
+  const runId = options.runId ?? await createSyncRun();
+  const page = await listRecordsPage(options.offset);
   const result: AirtableSyncResult = {
-    pulled: records.length,
+    pulled: page.records.length,
     created: 0,
     updated: 0,
     skippedInactive: 0,
     errors: [],
   };
 
-  const { data: existingRows, error: exErr } = await supabaseAdmin
-    .from('companies')
-    .select('id, company_name, airtable_record_id');
-  if (exErr) throw new Error(exErr.message);
+  try {
+    const { data: existingRows, error: exErr } = await supabaseAdmin
+      .from('companies')
+      .select('id, company_name, airtable_record_id');
+    if (exErr) throw new Error(exErr.message);
 
-  const byAirtableId = new Map<string, { id: string }>();
-  const byNameLower = new Map<string, { id: string }>();
-  for (const row of existingRows ?? []) {
-    if (row.airtable_record_id) byAirtableId.set(row.airtable_record_id, { id: row.id });
-    if (row.company_name) byNameLower.set(row.company_name.toLowerCase().trim(), { id: row.id });
-  }
-
-  for (const rec of records) {
-    try {
-      const f = rec.fields;
-      const companyName = str(f['Company']);
-      if (!companyName) {
-        result.errors.push({ recordId: rec.id, message: 'Missing Company name' });
-        continue;
-      }
-      const active = isActive(f['Active-Inactive']);
-      if (!active) {
-        result.skippedInactive++;
-        continue;
-      }
-
-      const carePlan = str(f['Care Plan']);
-      const website = str(f['Websites']);
-
-      const payload = {
-        company_name: companyName,
-        care_plan_type: carePlan,
-        website,
-        active_status: true,
-        airtable_record_id: rec.id,
-      };
-
-      const matchById = byAirtableId.get(rec.id);
-      const matchByName = !matchById ? byNameLower.get(companyName.toLowerCase().trim()) : null;
-
-      if (matchById) {
-        const { error } = await supabaseAdmin
-          .from('companies')
-          .update(payload)
-          .eq('id', matchById.id);
-        if (error) throw new Error(error.message);
-        result.updated++;
-      } else if (matchByName) {
-        const { error } = await supabaseAdmin
-          .from('companies')
-          .update(payload)
-          .eq('id', matchByName.id);
-        if (error) throw new Error(error.message);
-        result.updated++;
-      } else {
-        const { error } = await supabaseAdmin
-          .from('companies')
-          .insert({ ...payload, source_name: 'airtable' });
-        if (error) throw new Error(error.message);
-        result.created++;
-      }
-    } catch (e) {
-      result.errors.push({
-        recordId: rec.id,
-        message: e instanceof Error ? e.message : String(e),
-      });
+    const byAirtableId = new Map<string, { id: string }>();
+    const byNameLower = new Map<string, { id: string }>();
+    for (const row of existingRows ?? []) {
+      if (row.airtable_record_id) byAirtableId.set(row.airtable_record_id, { id: row.id });
+      if (row.company_name) byNameLower.set(row.company_name.toLowerCase().trim(), { id: row.id });
     }
-  }
 
-  return result;
+    for (const rec of page.records) {
+      try {
+        const f = rec.fields;
+        const companyName = str(f['Company']);
+        if (!companyName) {
+          result.errors.push({ recordId: rec.id, message: 'Missing Company name' });
+          continue;
+        }
+
+        const active = isActive(f['Active-Inactive']);
+        const carePlan = str(f['Care Plan']);
+        const website = str(f['Websites']);
+        const payload = {
+          company_name: companyName,
+          care_plan_type: carePlan,
+          website,
+          active_status: active,
+          airtable_record_id: rec.id,
+        };
+
+        const normalizedName = companyName.toLowerCase().trim();
+        const matchById = byAirtableId.get(rec.id);
+        const matchByName = !matchById ? byNameLower.get(normalizedName) : null;
+        const matchedRow = matchById ?? matchByName;
+
+        if (matchedRow) {
+          const { error } = await supabaseAdmin
+            .from('companies')
+            .update(payload)
+            .eq('id', matchedRow.id);
+          if (error) throw new Error(error.message);
+          result.updated++;
+          if (!active) result.skippedInactive++;
+          byAirtableId.set(rec.id, { id: matchedRow.id });
+          byNameLower.set(normalizedName, { id: matchedRow.id });
+        } else if (active) {
+          const { data: inserted, error } = await supabaseAdmin
+            .from('companies')
+            .insert({ ...payload, source_name: AIRTABLE_SOURCE })
+            .select('id')
+            .single();
+          if (error || !inserted) throw new Error(error?.message ?? 'Insert failed');
+          result.created++;
+          byAirtableId.set(rec.id, { id: inserted.id });
+          byNameLower.set(normalizedName, { id: inserted.id });
+        } else {
+          result.skippedInactive++;
+        }
+      } catch (e) {
+        result.errors.push({
+          recordId: rec.id,
+          message: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+
+    const done = !page.offset;
+    await updateSyncRun(runId, result, done);
+    return { ...result, done, nextOffset: page.offset ?? null, runId };
+  } catch (e) {
+    await failSyncRun(runId, result, e instanceof Error ? e.message : String(e));
+    throw e;
+  }
 }
 
 /**
