@@ -58,7 +58,7 @@ export const saveIntegrationFn = createServerFn({ method: 'POST' })
     }
     const { error } = await supabaseAdmin
       .from('integration_connections')
-      .update(update)
+      .update(update as never)
       .eq('source_name', data.source_name);
     if (error) throw new Error(error.message);
     return { ok: true };
