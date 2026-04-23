@@ -14,16 +14,270 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      assigned_name_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          normalized_team_member_name: string | null
+          notes: string | null
+          raw_assigned_id: string | null
+          raw_assigned_name: string | null
+          source_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          normalized_team_member_name?: string | null
+          notes?: string | null
+          raw_assigned_id?: string | null
+          raw_assigned_name?: string | null
+          source_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          normalized_team_member_name?: string | null
+          notes?: string | null
+          raw_assigned_id?: string | null
+          raw_assigned_name?: string | null
+          source_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      companies: {
+        Row: {
+          active_status: boolean | null
+          company_name: string | null
+          created_at: string
+          external_company_id: string | null
+          id: string
+          source_name: string
+          updated_at: string
+        }
+        Insert: {
+          active_status?: boolean | null
+          company_name?: string | null
+          created_at?: string
+          external_company_id?: string | null
+          id?: string
+          source_name: string
+          updated_at?: string
+        }
+        Update: {
+          active_status?: boolean | null
+          company_name?: string | null
+          created_at?: string
+          external_company_id?: string | null
+          id?: string
+          source_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      integration_connections: {
+        Row: {
+          api_key_or_token: string | null
+          auth_type: string | null
+          base_url: string | null
+          created_at: string
+          id: string
+          is_enabled: boolean
+          last_sync_at: string | null
+          last_tested_at: string | null
+          notes: string | null
+          source_name: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          api_key_or_token?: string | null
+          auth_type?: string | null
+          base_url?: string | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_sync_at?: string | null
+          last_tested_at?: string | null
+          notes?: string | null
+          source_name: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          api_key_or_token?: string | null
+          auth_type?: string | null
+          base_url?: string | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_sync_at?: string | null
+          last_tested_at?: string | null
+          notes?: string | null
+          source_name?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sync_runs: {
+        Row: {
+          created_at: string
+          error_count: number | null
+          error_details: Json | null
+          finished_at: string | null
+          id: string
+          records_created: number | null
+          records_received: number | null
+          records_updated: number | null
+          source_name: string
+          started_at: string
+          status: string
+          sync_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_count?: number | null
+          error_details?: Json | null
+          finished_at?: string | null
+          id?: string
+          records_created?: number | null
+          records_received?: number | null
+          records_updated?: number | null
+          source_name: string
+          started_at?: string
+          status?: string
+          sync_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_count?: number | null
+          error_details?: Json | null
+          finished_at?: string | null
+          id?: string
+          records_created?: number | null
+          records_received?: number | null
+          records_updated?: number | null
+          source_name?: string
+          started_at?: string
+          status?: string
+          sync_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tickets: {
+        Row: {
+          actual_logged_time: number | null
+          assigned_external_id: string | null
+          assigned_name_raw: string | null
+          closed_at_source: string | null
+          company_name: string | null
+          created_at: string
+          created_at_source: string | null
+          customer_name: string | null
+          external_company_id: string | null
+          external_ticket_id: string
+          id: string
+          inbox: string | null
+          raw_payload: Json | null
+          source_system: string
+          status: string | null
+          tags: string[] | null
+          ticket_title: string | null
+          ticket_url: string | null
+          type: string | null
+          updated_at: string
+          updated_at_source: string | null
+        }
+        Insert: {
+          actual_logged_time?: number | null
+          assigned_external_id?: string | null
+          assigned_name_raw?: string | null
+          closed_at_source?: string | null
+          company_name?: string | null
+          created_at?: string
+          created_at_source?: string | null
+          customer_name?: string | null
+          external_company_id?: string | null
+          external_ticket_id: string
+          id?: string
+          inbox?: string | null
+          raw_payload?: Json | null
+          source_system: string
+          status?: string | null
+          tags?: string[] | null
+          ticket_title?: string | null
+          ticket_url?: string | null
+          type?: string | null
+          updated_at?: string
+          updated_at_source?: string | null
+        }
+        Update: {
+          actual_logged_time?: number | null
+          assigned_external_id?: string | null
+          assigned_name_raw?: string | null
+          closed_at_source?: string | null
+          company_name?: string | null
+          created_at?: string
+          created_at_source?: string | null
+          customer_name?: string | null
+          external_company_id?: string | null
+          external_ticket_id?: string
+          id?: string
+          inbox?: string | null
+          raw_payload?: Json | null
+          source_system?: string
+          status?: string | null
+          tags?: string[] | null
+          ticket_title?: string | null
+          ticket_url?: string | null
+          type?: string | null
+          updated_at?: string
+          updated_at_source?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +404,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
