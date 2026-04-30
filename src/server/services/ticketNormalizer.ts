@@ -187,7 +187,7 @@ export function normalizeDeskTicket(raw: RawTicket, baseUrl: string): Normalized
     external_company_id: companyId !== undefined ? String(companyId) : null,
     company_name: s(company?.name ?? company?.companyName),
     ticket_title: s(t.subject),
-    status: s(statusObj?.name ?? t.state),
+    status: s(statusName),
     type: normalizeDeskType(s(typeName)),
     assigned_name_raw: assigneeName,
     assigned_external_id: agentId !== undefined ? String(agentId) : null,
