@@ -6,21 +6,26 @@ import {
   trimBaseUrl,
 } from './types';
 
-async function desk(cfg: ConnectionConfig, path: string): Promise<unknown> {
+async function desk(cfg: ConnectionConfig, path: string, attempt = 0): Promise<unknown> {
   const url = `${trimBaseUrl(cfg.baseUrl)}/desk/api/v2${path}`;
   const res = await fetch(url, {
     headers: {
-      // Teamwork Desk uses Bearer token auth (not Basic like Teamwork Projects)
       Authorization: `Bearer ${cfg.token}`,
       Accept: 'application/json',
     },
   });
+  if (res.status === 429 && attempt < 3) {
+    await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+    return desk(cfg, path, attempt + 1);
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Teamwork Desk ${path} failed [${res.status}]: ${text.slice(0, 300)}`);
   }
   return res.json();
 }
+
+const iso = (d: Date) => d.toISOString();
 
 export const teamworkDeskAdapter: SourceAdapter = {
   sourceName: 'teamwork_desk',
@@ -57,25 +62,40 @@ export const teamworkDeskAdapter: SourceAdapter = {
     return out;
   },
 
-  async fetchTickets(cfg) {
+  async fetchTickets(cfg, opts) {
     const out: RawTicket[] = [];
     let page = 1;
+    const since = opts?.since;
+    const sinceTime = since ? since.getTime() : 0;
+    const sinceParam = since ? `&updatedAfter=${encodeURIComponent(iso(since))}` : '';
     while (page < 200) {
       const data = (await desk(
         cfg,
-        `/tickets.json?page=${page}&pageSize=100&include=customer,inbox,tags,agent,status,type,messages`,
+        `/tickets.json?page=${page}&pageSize=100&include=customer,inbox,tags,agent,status,type${sinceParam}`,
       )) as {
         tickets?: Array<Record<string, unknown>>;
         included?: Record<string, Record<string, Record<string, unknown>>>;
       };
       const list = data.tickets ?? [];
       if (list.length === 0) break;
+      let stopAfterPage = false;
       for (const t of list) {
+        if (since) {
+          const u = (t.updatedAt as string | undefined) ?? null;
+          if (u) {
+            const ts = Date.parse(u);
+            if (Number.isFinite(ts) && ts < sinceTime) {
+              stopAfterPage = true;
+              continue;
+            }
+          }
+        }
         out.push({
           externalId: String(t.id),
           raw: { ...t, _included: data.included ?? {} },
         });
       }
+      if (stopAfterPage) break;
       if (list.length < 100) break;
       page++;
     }
