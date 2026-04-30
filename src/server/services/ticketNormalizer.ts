@@ -109,7 +109,11 @@ export function normalizeTeamworkTask(
   };
 }
 
-export function normalizeDeskTicket(raw: RawTicket, baseUrl: string): NormalizedTicket {
+export function normalizeDeskTicket(
+  raw: RawTicket,
+  baseUrl: string,
+  loggedHoursByTicketId?: Map<string, number>,
+): NormalizedTicket {
   const t = raw.raw as Record<string, unknown>;
   const included = t._included as
     | Record<string, Record<string, Record<string, unknown>>>
