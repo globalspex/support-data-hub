@@ -24,6 +24,23 @@ export interface NormalizedTicket {
 const s = (v: unknown): string | null =>
   v === null || v === undefined || v === '' ? null : String(v);
 
+const normalizeDeskType = (name: string | null): string | null => {
+  if (!name) return null;
+  const value = name.trim().toLowerCase();
+  if (value.includes('marketing')) return 'marketing';
+  if (value.includes('problem')) return 'problem';
+  if (value.includes('request')) return 'request';
+  if (value.includes('question')) return 'question';
+  if (
+    value.includes('incident') ||
+    value.includes('alert') ||
+    value.includes('warning') ||
+    value.includes('wp remote') ||
+    value.includes('wordfence')
+  ) return 'incident';
+  return value;
+};
+
 const lookupIncluded = (
   included: Record<string, Record<string, Record<string, unknown>>> | undefined,
   type: string,
@@ -133,7 +150,7 @@ export function normalizeDeskTicket(
     company_name: s(company?.name ?? company?.companyName),
     ticket_title: s(t.subject),
     status: s(statusObj?.name ?? t.state),
-    type: s(typeName),
+    type: normalizeDeskType(s(typeName)),
     assigned_name_raw: assigneeName,
     assigned_external_id: agentId !== undefined ? String(agentId) : null,
     customer_name: customerName,
