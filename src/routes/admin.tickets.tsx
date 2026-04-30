@@ -83,7 +83,11 @@ function TicketsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const setF = (k: keyof typeof filters, v: string) => setFilters((p) => ({ ...p, [k]: v }));
+  const setF = <K extends keyof typeof filters>(k: K, v: (typeof filters)[K]) => setFilters((p) => ({ ...p, [k]: v }));
+  const toggleStatus = (s: string) => setFilters((p) => ({
+    ...p,
+    status: p.status.includes(s) ? p.status.filter((x) => x !== s) : [...p.status, s],
+  }));
   const num = (n: number | null | undefined, d = 1) => (n === null || n === undefined ? '—' : Number(n).toFixed(d));
   const money = (n: number | null | undefined) => (n === null || n === undefined ? '—' : `$${Number(n).toFixed(0)}`);
 
