@@ -23,6 +23,8 @@ export interface SourceAdapter {
   testConnection(cfg: ConnectionConfig): Promise<{ ok: boolean; message: string }>;
   fetchCompanies(cfg: ConnectionConfig): Promise<RawCompany[]>;
   fetchTickets(cfg: ConnectionConfig, opts?: { since?: Date }): Promise<RawTicket[]>;
+  /** Optional: returns Map of taskId -> total logged hours (decimal). */
+  fetchTimeEntriesByTaskId?(cfg: ConnectionConfig): Promise<Map<string, number>>;
 }
 
 export function basicAuthHeader(token: string): string {
