@@ -202,7 +202,9 @@ export function normalizeDeskTicket(
     created_at_source: s(t.createdAt),
     updated_at_source: s(t.updatedAt),
     closed_at_source: s(t.resolvedAt ?? t.closedAt),
-    actual_logged_time: typeof t.timeSpent === "number" ? (t.timeSpent as number) : null,
+    actual_logged_time:
+      loggedHoursByTicketId?.get(raw.externalId) ??
+      (typeof t.timeSpent === "number" ? (t.timeSpent as number) : null),
     raw_payload: t,
   };
 }
