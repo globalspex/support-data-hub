@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
@@ -25,6 +26,8 @@ interface IntegrationRow {
   last_sync_at: string | null;
   notes: string | null;
   has_token: boolean;
+  sync_window_days: number | null;
+  history_imported_through: string | null;
 }
 
 const LABELS: Record<string, string> = {
@@ -32,11 +35,162 @@ const LABELS: Record<string, string> = {
   teamwork_desk: 'Teamwork Desk',
 };
 
+function todayISODate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+function daysAgoISODate(days: number): string {
+  return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+}
+
+function ImportHistoryDialog({ source, open, onOpenChange, onDone }: {
+  source: 'teamwork' | 'teamwork_desk';
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onDone: () => void;
+}) {
+  const [fromDate, setFromDate] = useState(daysAgoISODate(365));
+  const [busy, setBusy] = useState(false);
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      const r = (await apiFetch('/api/integrations/import-history', {
+        method: 'POST',
+        body: JSON.stringify({ source_name: source, from_date: fromDate }),
+      })) as { received?: number; created?: number; updated?: number; errorCount?: number };
+      toast.success(`History imported — received ${r.received ?? 0}, created ${r.created ?? 0}, updated ${r.updated ?? 0}`);
+      onOpenChange(false);
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Import history — {LABELS[source]}</DialogTitle>
+          <DialogDescription>
+            One-shot sync that ignores the routine window and pulls everything updated since the date you pick. May take a while for wide ranges.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Label>From date</Label>
+          <Input type="date" value={fromDate} max={todayISODate()} onChange={(e) => setFromDate(e.target.value)} />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
+          <Button onClick={run} disabled={busy || !fromDate}>{busy ? 'Importing…' : 'Run import'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PurgeDialog({ source, defaultDays, open, onOpenChange, onDone }: {
+  source: 'teamwork' | 'teamwork_desk';
+  defaultDays: number;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onDone: () => void;
+}) {
+  const [cutoff, setCutoff] = useState(daysAgoISODate(defaultDays));
+  const [confirmText, setConfirmText] = useState('');
+  const [count, setCount] = useState<number | null>(null);
+  const [busy, setBusy] = useState<'preview' | 'purge' | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setCutoff(daysAgoISODate(defaultDays));
+      setConfirmText('');
+      setCount(null);
+    }
+  }, [open, defaultDays]);
+
+  const preview = async () => {
+    setBusy('preview');
+    try {
+      const r = (await apiFetch(`/api/integrations/purge-preview?source_name=${source}&older_than_date=${cutoff}`)) as { count: number };
+      setCount(r.count);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const purge = async () => {
+    setBusy('purge');
+    try {
+      const r = (await apiFetch('/api/integrations/purge-old', {
+        method: 'POST',
+        body: JSON.stringify({ source_name: source, older_than_date: cutoff, confirm: 'PURGE' }),
+      })) as { deleted: number };
+      toast.success(`Deleted ${r.deleted} ticket${r.deleted === 1 ? '' : 's'}.`);
+      onOpenChange(false);
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Purge old tickets — {LABELS[source]}</DialogTitle>
+          <DialogDescription>
+            Permanently deletes tickets from this source whose last update is before the cutoff. Companies, mappings, and rules are not touched. Cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label>Cutoff date (delete tickets older than)</Label>
+            <Input type="date" value={cutoff} max={todayISODate()} onChange={(e) => { setCutoff(e.target.value); setCount(null); }} />
+          </div>
+          <div>
+            <Button variant="outline" onClick={preview} disabled={busy !== null || !cutoff}>
+              {busy === 'preview' ? 'Counting…' : 'Preview count'}
+            </Button>
+            {count !== null && (
+              <span className="ml-3 text-sm">
+                <strong>{count}</strong> ticket{count === 1 ? '' : 's'} would be deleted.
+              </span>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label>Type <code>PURGE</code> to confirm</Label>
+            <Input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder="PURGE" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy !== null}>Cancel</Button>
+          <Button
+            variant="destructive"
+            onClick={purge}
+            disabled={busy !== null || confirmText !== 'PURGE' || count === null || count === 0}
+          >
+            {busy === 'purge' ? 'Purging…' : 'Purge tickets'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function IntegrationCard({ row, onChange }: { row: IntegrationRow; onChange: () => void }) {
   const [baseUrl, setBaseUrl] = useState(row.base_url ?? '');
   const [token, setToken] = useState('');
   const [enabled, setEnabled] = useState(row.is_enabled);
+  const [windowDays, setWindowDays] = useState<number>(row.sync_window_days ?? 90);
   const [busy, setBusy] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [purgeOpen, setPurgeOpen] = useState(false);
 
   const save = async () => {
     setBusy('save');
@@ -48,6 +202,7 @@ function IntegrationCard({ row, onChange }: { row: IntegrationRow; onChange: () 
           base_url: baseUrl,
           api_key_or_token: token || undefined,
           is_enabled: enabled,
+          sync_window_days: Number(windowDays) || 90,
         }),
       });
       setToken('');
@@ -128,21 +283,40 @@ function IntegrationCard({ row, onChange }: { row: IntegrationRow; onChange: () 
             onChange={(e) => setToken(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2">
-          <Switch checked={enabled} onCheckedChange={setEnabled} id={`enabled-${row.source_name}`} />
-          <Label htmlFor={`enabled-${row.source_name}`}>Enabled</Label>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor={`window-${row.source_name}`}>Sync window (days)</Label>
+            <Input
+              id={`window-${row.source_name}`}
+              type="number"
+              min={1}
+              max={3650}
+              value={windowDays}
+              onChange={(e) => setWindowDays(Number(e.target.value))}
+            />
+            <p className="text-xs text-muted-foreground">Routine syncs only fetch tickets updated in the last N days.</p>
+          </div>
+          <div className="flex items-center gap-2 pt-6">
+            <Switch checked={enabled} onCheckedChange={setEnabled} id={`enabled-${row.source_name}`} />
+            <Label htmlFor={`enabled-${row.source_name}`}>Enabled</Label>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2 pt-2">
           <Button onClick={save} disabled={!!busy}>{busy === 'save' ? 'Saving…' : 'Save'}</Button>
           <Button variant="outline" onClick={test} disabled={!!busy}>{busy === 'test' ? 'Testing…' : 'Test connection'}</Button>
           <Button variant="secondary" onClick={sync} disabled={!!busy || !row.is_enabled}>{busy === 'sync' ? 'Syncing…' : 'Run sync'}</Button>
+          <Button variant="outline" onClick={() => setHistoryOpen(true)} disabled={!!busy || !row.is_enabled}>Import history…</Button>
+          <Button variant="outline" onClick={() => setPurgeOpen(true)} disabled={!!busy} className="text-destructive hover:text-destructive">Purge old tickets…</Button>
         </div>
         <div className="text-xs text-muted-foreground space-y-1 pt-2">
           <div>Last tested: {row.last_tested_at ?? '—'}</div>
           <div>Last sync: {row.last_sync_at ?? '—'}</div>
+          <div>History imported back to: {row.history_imported_through ? row.history_imported_through.slice(0, 10) : '—'}</div>
           {row.notes && <div className="text-destructive">Note: {row.notes}</div>}
         </div>
       </CardContent>
+      <ImportHistoryDialog source={row.source_name} open={historyOpen} onOpenChange={setHistoryOpen} onDone={onChange} />
+      <PurgeDialog source={row.source_name} defaultDays={row.sync_window_days ?? 90} open={purgeOpen} onOpenChange={setPurgeOpen} onDone={onChange} />
     </Card>
   );
 }
@@ -169,7 +343,7 @@ function IntegrationsPage() {
       <Toaster />
       <div>
         <h2 className="text-2xl font-semibold">Integrations</h2>
-        <p className="text-sm text-muted-foreground">Configure source systems, test connections, and trigger manual syncs.</p>
+        <p className="text-sm text-muted-foreground">Configure source systems, set the rolling sync window, import history, or purge old tickets.</p>
       </div>
       {loading ? (
         <p className="text-muted-foreground">Loading…</p>

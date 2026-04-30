@@ -40,6 +40,9 @@ import { Route as ApiReportsByTeamMemberRouteImport } from './routes/api/reports
 import { Route as ApiReportsByCompanyRouteImport } from './routes/api/reports.by-company'
 import { Route as ApiIntegrationsTestRouteImport } from './routes/api/integrations.test'
 import { Route as ApiIntegrationsSyncRouteImport } from './routes/api/integrations.sync'
+import { Route as ApiIntegrationsPurgePreviewRouteImport } from './routes/api/integrations.purge-preview'
+import { Route as ApiIntegrationsPurgeOldRouteImport } from './routes/api/integrations.purge-old'
+import { Route as ApiIntegrationsImportHistoryRouteImport } from './routes/api/integrations.import-history'
 import { Route as ApiCompaniesImportRouteImport } from './routes/api/companies.import'
 import { Route as ApiCompaniesIdRouteImport } from './routes/api/companies.$id'
 import { Route as ApiAssignedMappingsBulkRouteImport } from './routes/api/assigned-mappings.bulk'
@@ -201,6 +204,23 @@ const ApiIntegrationsSyncRoute = ApiIntegrationsSyncRouteImport.update({
   path: '/sync',
   getParentRoute: () => ApiIntegrationsRoute,
 } as any)
+const ApiIntegrationsPurgePreviewRoute =
+  ApiIntegrationsPurgePreviewRouteImport.update({
+    id: '/purge-preview',
+    path: '/purge-preview',
+    getParentRoute: () => ApiIntegrationsRoute,
+  } as any)
+const ApiIntegrationsPurgeOldRoute = ApiIntegrationsPurgeOldRouteImport.update({
+  id: '/purge-old',
+  path: '/purge-old',
+  getParentRoute: () => ApiIntegrationsRoute,
+} as any)
+const ApiIntegrationsImportHistoryRoute =
+  ApiIntegrationsImportHistoryRouteImport.update({
+    id: '/import-history',
+    path: '/import-history',
+    getParentRoute: () => ApiIntegrationsRoute,
+  } as any)
 const ApiCompaniesImportRoute = ApiCompaniesImportRouteImport.update({
   id: '/import',
   path: '/import',
@@ -255,6 +275,9 @@ export interface FileRoutesByFullPath {
   '/api/assigned-mappings/bulk': typeof ApiAssignedMappingsBulkRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/companies/import': typeof ApiCompaniesImportRoute
+  '/api/integrations/import-history': typeof ApiIntegrationsImportHistoryRoute
+  '/api/integrations/purge-old': typeof ApiIntegrationsPurgeOldRoute
+  '/api/integrations/purge-preview': typeof ApiIntegrationsPurgePreviewRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
   '/api/reports/by-company': typeof ApiReportsByCompanyRoute
@@ -292,6 +315,9 @@ export interface FileRoutesByTo {
   '/api/assigned-mappings/bulk': typeof ApiAssignedMappingsBulkRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/companies/import': typeof ApiCompaniesImportRoute
+  '/api/integrations/import-history': typeof ApiIntegrationsImportHistoryRoute
+  '/api/integrations/purge-old': typeof ApiIntegrationsPurgeOldRoute
+  '/api/integrations/purge-preview': typeof ApiIntegrationsPurgePreviewRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
   '/api/reports/by-company': typeof ApiReportsByCompanyRoute
@@ -331,6 +357,9 @@ export interface FileRoutesById {
   '/api/assigned-mappings/bulk': typeof ApiAssignedMappingsBulkRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/companies/import': typeof ApiCompaniesImportRoute
+  '/api/integrations/import-history': typeof ApiIntegrationsImportHistoryRoute
+  '/api/integrations/purge-old': typeof ApiIntegrationsPurgeOldRoute
+  '/api/integrations/purge-preview': typeof ApiIntegrationsPurgePreviewRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
   '/api/reports/by-company': typeof ApiReportsByCompanyRoute
@@ -371,6 +400,9 @@ export interface FileRouteTypes {
     | '/api/assigned-mappings/bulk'
     | '/api/companies/$id'
     | '/api/companies/import'
+    | '/api/integrations/import-history'
+    | '/api/integrations/purge-old'
+    | '/api/integrations/purge-preview'
     | '/api/integrations/sync'
     | '/api/integrations/test'
     | '/api/reports/by-company'
@@ -408,6 +440,9 @@ export interface FileRouteTypes {
     | '/api/assigned-mappings/bulk'
     | '/api/companies/$id'
     | '/api/companies/import'
+    | '/api/integrations/import-history'
+    | '/api/integrations/purge-old'
+    | '/api/integrations/purge-preview'
     | '/api/integrations/sync'
     | '/api/integrations/test'
     | '/api/reports/by-company'
@@ -446,6 +481,9 @@ export interface FileRouteTypes {
     | '/api/assigned-mappings/bulk'
     | '/api/companies/$id'
     | '/api/companies/import'
+    | '/api/integrations/import-history'
+    | '/api/integrations/purge-old'
+    | '/api/integrations/purge-preview'
     | '/api/integrations/sync'
     | '/api/integrations/test'
     | '/api/reports/by-company'
@@ -696,6 +734,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIntegrationsSyncRouteImport
       parentRoute: typeof ApiIntegrationsRoute
     }
+    '/api/integrations/purge-preview': {
+      id: '/api/integrations/purge-preview'
+      path: '/purge-preview'
+      fullPath: '/api/integrations/purge-preview'
+      preLoaderRoute: typeof ApiIntegrationsPurgePreviewRouteImport
+      parentRoute: typeof ApiIntegrationsRoute
+    }
+    '/api/integrations/purge-old': {
+      id: '/api/integrations/purge-old'
+      path: '/purge-old'
+      fullPath: '/api/integrations/purge-old'
+      preLoaderRoute: typeof ApiIntegrationsPurgeOldRouteImport
+      parentRoute: typeof ApiIntegrationsRoute
+    }
+    '/api/integrations/import-history': {
+      id: '/api/integrations/import-history'
+      path: '/import-history'
+      fullPath: '/api/integrations/import-history'
+      preLoaderRoute: typeof ApiIntegrationsImportHistoryRouteImport
+      parentRoute: typeof ApiIntegrationsRoute
+    }
     '/api/companies/import': {
       id: '/api/companies/import'
       path: '/import'
@@ -790,11 +849,17 @@ const ApiCompaniesRouteWithChildren = ApiCompaniesRoute._addFileChildren(
 )
 
 interface ApiIntegrationsRouteChildren {
+  ApiIntegrationsImportHistoryRoute: typeof ApiIntegrationsImportHistoryRoute
+  ApiIntegrationsPurgeOldRoute: typeof ApiIntegrationsPurgeOldRoute
+  ApiIntegrationsPurgePreviewRoute: typeof ApiIntegrationsPurgePreviewRoute
   ApiIntegrationsSyncRoute: typeof ApiIntegrationsSyncRoute
   ApiIntegrationsTestRoute: typeof ApiIntegrationsTestRoute
 }
 
 const ApiIntegrationsRouteChildren: ApiIntegrationsRouteChildren = {
+  ApiIntegrationsImportHistoryRoute: ApiIntegrationsImportHistoryRoute,
+  ApiIntegrationsPurgeOldRoute: ApiIntegrationsPurgeOldRoute,
+  ApiIntegrationsPurgePreviewRoute: ApiIntegrationsPurgePreviewRoute,
   ApiIntegrationsSyncRoute: ApiIntegrationsSyncRoute,
   ApiIntegrationsTestRoute: ApiIntegrationsTestRoute,
 }
