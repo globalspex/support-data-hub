@@ -85,7 +85,12 @@ export const teamworkAdapter: SourceAdapter = {
 
   async fetchTimeEntriesByTaskId(cfg) {
     // Teamwork v3 time entries — sum hours+minutes per task.
+    // Dedupe by time-entry id across pages: Teamwork pagination can return the
+    // same entry twice if records are added/edited mid-fetch, which would
+    // otherwise inflate per-task totals.
     const totals = new Map<string, number>();
+    const seenEntryIds = new Set<string>();
+    let duplicateCount = 0;
     let page = 1;
     while (page < 500) {
       const data = (await tw(
@@ -98,6 +103,15 @@ export const teamworkAdapter: SourceAdapter = {
       const list = data.timelogs ?? data.timeEntries ?? [];
       if (list.length === 0) break;
       for (const entry of list) {
+        const entryId = entry.id as string | number | undefined;
+        if (entryId !== undefined && entryId !== null) {
+          const idKey = String(entryId);
+          if (seenEntryIds.has(idKey)) {
+            duplicateCount++;
+            continue;
+          }
+          seenEntryIds.add(idKey);
+        }
         const taskId =
           (entry.taskId as string | number | undefined) ??
           ((entry.task as { id?: string | number } | undefined)?.id);
@@ -111,6 +125,11 @@ export const teamworkAdapter: SourceAdapter = {
       }
       if (list.length < 500) break;
       page++;
+    }
+    if (duplicateCount > 0) {
+      console.log(
+        `[teamworkAdapter] Skipped ${duplicateCount} duplicate time entries during pagination`,
+      );
     }
     return totals;
   },
