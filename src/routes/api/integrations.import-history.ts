@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/integrations/supabase/client.server';
 import { requireAdminFromRequest, jsonResponse } from '@/server/services/apiAuth';
-import { runSync } from '@/server/services/syncService';
+import { runSync, createSyncRun } from '@/server/services/syncService';
 
 const Body = z.object({
   source_name: z.enum(['teamwork', 'teamwork_desk']),
@@ -22,22 +22,37 @@ export const Route = createFileRoute('/api/integrations/import-history')({
         if (isNaN(since.getTime())) return jsonResponse({ error: 'Invalid from_date' }, { status: 400 });
 
         try {
-          const result = await runSync(parsed.data.source_name, { sinceOverride: since });
+          const runId = await createSyncRun(parsed.data.source_name);
 
-          // Update history_imported_through to the earliest backfill date seen.
-          const { data: row } = await supabaseAdmin
-            .from('integration_connections')
-            .select('history_imported_through')
-            .eq('source_name', parsed.data.source_name)
-            .maybeSingle();
-          const existing = row?.history_imported_through ? new Date(row.history_imported_through) : null;
-          const earliest = existing && existing < since ? existing : since;
-          await supabaseAdmin
-            .from('integration_connections')
-            .update({ history_imported_through: earliest.toISOString() })
-            .eq('source_name', parsed.data.source_name);
+          // Fire and forget — long history imports can exceed gateway timeouts.
+          void runSync(parsed.data.source_name, { sinceOverride: since }, runId)
+            .then(async () => {
+              const { data: row } = await supabaseAdmin
+                .from('integration_connections')
+                .select('history_imported_through')
+                .eq('source_name', parsed.data.source_name)
+                .maybeSingle();
+              const existing = row?.history_imported_through ? new Date(row.history_imported_through) : null;
+              const earliest = existing && existing < since ? existing : since;
+              await supabaseAdmin
+                .from('integration_connections')
+                .update({ history_imported_through: earliest.toISOString() })
+                .eq('source_name', parsed.data.source_name);
+            })
+            .catch(async (e) => {
+              const message = e instanceof Error ? e.message : String(e);
+              await supabaseAdmin
+                .from('sync_runs')
+                .update({
+                  finished_at: new Date().toISOString(),
+                  status: 'error',
+                  error_count: 1,
+                  error_details: [{ stage: 'background', message }],
+                })
+                .eq('id', runId);
+            });
 
-          return jsonResponse({ ok: true, ...result, since: since.toISOString() });
+          return jsonResponse({ ok: true, queued: true, runId, since: since.toISOString() });
         } catch (e) {
           return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
         }
