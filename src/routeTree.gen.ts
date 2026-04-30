@@ -33,6 +33,7 @@ import { Route as AdminCompaniesRouteImport } from './routes/admin.companies'
 import { Route as ApiTicketsIdRouteImport } from './routes/api/tickets.$id'
 import { Route as ApiTeamMembersIdRouteImport } from './routes/api/team-members.$id'
 import { Route as ApiTagRulesIdRouteImport } from './routes/api/tag-rules.$id'
+import { Route as ApiSyncRunsVerificationRouteImport } from './routes/api/sync-runs.verification'
 import { Route as ApiReportsTrendsRouteImport } from './routes/api/reports.trends'
 import { Route as ApiReportsSummaryRouteImport } from './routes/api/reports.summary'
 import { Route as ApiReportsByTeamMemberRouteImport } from './routes/api/reports.by-team-member'
@@ -163,6 +164,11 @@ const ApiTagRulesIdRoute = ApiTagRulesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiTagRulesRoute,
 } as any)
+const ApiSyncRunsVerificationRoute = ApiSyncRunsVerificationRouteImport.update({
+  id: '/verification',
+  path: '/verification',
+  getParentRoute: () => ApiSyncRunsRoute,
+} as any)
 const ApiReportsTrendsRoute = ApiReportsTrendsRouteImport.update({
   id: '/api/reports/trends',
   path: '/api/reports/trends',
@@ -226,7 +232,7 @@ export interface FileRoutesByFullPath {
   '/api/integrations': typeof ApiIntegrationsRouteWithChildren
   '/api/recalculate': typeof ApiRecalculateRoute
   '/api/reporting-settings': typeof ApiReportingSettingsRoute
-  '/api/sync-runs': typeof ApiSyncRunsRoute
+  '/api/sync-runs': typeof ApiSyncRunsRouteWithChildren
   '/api/tag-rules': typeof ApiTagRulesRouteWithChildren
   '/api/team-members': typeof ApiTeamMembersRouteWithChildren
   '/api/tickets': typeof ApiTicketsRouteWithChildren
@@ -240,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
   '/api/reports/summary': typeof ApiReportsSummaryRoute
   '/api/reports/trends': typeof ApiReportsTrendsRoute
+  '/api/sync-runs/verification': typeof ApiSyncRunsVerificationRoute
   '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
   '/api/team-members/$id': typeof ApiTeamMembersIdRoute
   '/api/tickets/$id': typeof ApiTicketsIdRoute
@@ -260,7 +267,7 @@ export interface FileRoutesByTo {
   '/api/integrations': typeof ApiIntegrationsRouteWithChildren
   '/api/recalculate': typeof ApiRecalculateRoute
   '/api/reporting-settings': typeof ApiReportingSettingsRoute
-  '/api/sync-runs': typeof ApiSyncRunsRoute
+  '/api/sync-runs': typeof ApiSyncRunsRouteWithChildren
   '/api/tag-rules': typeof ApiTagRulesRouteWithChildren
   '/api/team-members': typeof ApiTeamMembersRouteWithChildren
   '/api/tickets': typeof ApiTicketsRouteWithChildren
@@ -274,6 +281,7 @@ export interface FileRoutesByTo {
   '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
   '/api/reports/summary': typeof ApiReportsSummaryRoute
   '/api/reports/trends': typeof ApiReportsTrendsRoute
+  '/api/sync-runs/verification': typeof ApiSyncRunsVerificationRoute
   '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
   '/api/team-members/$id': typeof ApiTeamMembersIdRoute
   '/api/tickets/$id': typeof ApiTicketsIdRoute
@@ -296,7 +304,7 @@ export interface FileRoutesById {
   '/api/integrations': typeof ApiIntegrationsRouteWithChildren
   '/api/recalculate': typeof ApiRecalculateRoute
   '/api/reporting-settings': typeof ApiReportingSettingsRoute
-  '/api/sync-runs': typeof ApiSyncRunsRoute
+  '/api/sync-runs': typeof ApiSyncRunsRouteWithChildren
   '/api/tag-rules': typeof ApiTagRulesRouteWithChildren
   '/api/team-members': typeof ApiTeamMembersRouteWithChildren
   '/api/tickets': typeof ApiTicketsRouteWithChildren
@@ -310,6 +318,7 @@ export interface FileRoutesById {
   '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
   '/api/reports/summary': typeof ApiReportsSummaryRoute
   '/api/reports/trends': typeof ApiReportsTrendsRoute
+  '/api/sync-runs/verification': typeof ApiSyncRunsVerificationRoute
   '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
   '/api/team-members/$id': typeof ApiTeamMembersIdRoute
   '/api/tickets/$id': typeof ApiTicketsIdRoute
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
     | '/api/reports/by-team-member'
     | '/api/reports/summary'
     | '/api/reports/trends'
+    | '/api/sync-runs/verification'
     | '/api/tag-rules/$id'
     | '/api/team-members/$id'
     | '/api/tickets/$id'
@@ -381,6 +391,7 @@ export interface FileRouteTypes {
     | '/api/reports/by-team-member'
     | '/api/reports/summary'
     | '/api/reports/trends'
+    | '/api/sync-runs/verification'
     | '/api/tag-rules/$id'
     | '/api/team-members/$id'
     | '/api/tickets/$id'
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/api/reports/by-team-member'
     | '/api/reports/summary'
     | '/api/reports/trends'
+    | '/api/sync-runs/verification'
     | '/api/tag-rules/$id'
     | '/api/team-members/$id'
     | '/api/tickets/$id'
@@ -430,7 +442,7 @@ export interface RootRouteChildren {
   ApiIntegrationsRoute: typeof ApiIntegrationsRouteWithChildren
   ApiRecalculateRoute: typeof ApiRecalculateRoute
   ApiReportingSettingsRoute: typeof ApiReportingSettingsRoute
-  ApiSyncRunsRoute: typeof ApiSyncRunsRoute
+  ApiSyncRunsRoute: typeof ApiSyncRunsRouteWithChildren
   ApiTagRulesRoute: typeof ApiTagRulesRouteWithChildren
   ApiTeamMembersRoute: typeof ApiTeamMembersRouteWithChildren
   ApiTicketsRoute: typeof ApiTicketsRouteWithChildren
@@ -610,6 +622,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTagRulesIdRouteImport
       parentRoute: typeof ApiTagRulesRoute
     }
+    '/api/sync-runs/verification': {
+      id: '/api/sync-runs/verification'
+      path: '/verification'
+      fullPath: '/api/sync-runs/verification'
+      preLoaderRoute: typeof ApiSyncRunsVerificationRouteImport
+      parentRoute: typeof ApiSyncRunsRoute
+    }
     '/api/reports/trends': {
       id: '/api/reports/trends'
       path: '/api/reports/trends'
@@ -741,6 +760,18 @@ const ApiIntegrationsRouteWithChildren = ApiIntegrationsRoute._addFileChildren(
   ApiIntegrationsRouteChildren,
 )
 
+interface ApiSyncRunsRouteChildren {
+  ApiSyncRunsVerificationRoute: typeof ApiSyncRunsVerificationRoute
+}
+
+const ApiSyncRunsRouteChildren: ApiSyncRunsRouteChildren = {
+  ApiSyncRunsVerificationRoute: ApiSyncRunsVerificationRoute,
+}
+
+const ApiSyncRunsRouteWithChildren = ApiSyncRunsRoute._addFileChildren(
+  ApiSyncRunsRouteChildren,
+)
+
 interface ApiTagRulesRouteChildren {
   ApiTagRulesIdRoute: typeof ApiTagRulesIdRoute
 }
@@ -786,7 +817,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIntegrationsRoute: ApiIntegrationsRouteWithChildren,
   ApiRecalculateRoute: ApiRecalculateRoute,
   ApiReportingSettingsRoute: ApiReportingSettingsRoute,
-  ApiSyncRunsRoute: ApiSyncRunsRoute,
+  ApiSyncRunsRoute: ApiSyncRunsRouteWithChildren,
   ApiTagRulesRoute: ApiTagRulesRouteWithChildren,
   ApiTeamMembersRoute: ApiTeamMembersRouteWithChildren,
   ApiTicketsRoute: ApiTicketsRouteWithChildren,
