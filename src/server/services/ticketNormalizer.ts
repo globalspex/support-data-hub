@@ -119,8 +119,10 @@ export function normalizeDeskTicket(
   const statusObj = t.status as { name?: string } | undefined;
   const typeRef = t.type as { id?: unknown; name?: string } | undefined;
   const typeId = typeRef?.id;
+  const typeMap = t._ticketTypesById as Record<string, Record<string, unknown>> | undefined;
   const typeIncluded = lookupIncluded(included, 'tickettypes', typeId as string | number | undefined);
-  const typeName = typeRef?.name ?? (typeIncluded?.name as string | undefined);
+  const typeFromMap = typeId !== undefined && typeId !== null ? typeMap?.[String(typeId)] : undefined;
+  const typeName = typeRef?.name ?? (typeIncluded?.name as string | undefined) ?? (typeFromMap?.name as string | undefined);
 
   const base = baseUrl.replace(/\/+$/, '');
 
