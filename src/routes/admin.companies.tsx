@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Papa from 'papaparse';
 import { apiFetch } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Settings2, RefreshCw } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Settings2, Plus, Upload, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -71,12 +80,28 @@ const COLUMNS: { key: ColumnKey; label: string }[] = [
 
 const STORAGE_KEY = 'companies.visibleColumns.v2';
 
+interface CsvRow { company_name: string; website: string | null; care_plan_type: string | null; active_status: boolean }
+interface DiffEntry {
+  csv: CsvRow;
+  matchedId: string | null;
+  changes: Record<string, { from: unknown; to: unknown }>;
+  status: 'update' | 'no_change' | 'create' | 'unmatched';
+}
+interface DryRunResponse {
+  ok: boolean;
+  dryRun: boolean;
+  summary: { total: number; toUpdate: number; unchanged: number; unmatched: number; toCreate: number };
+  diff: DiffEntry[];
+}
+
 function CompaniesPage() {
   const [rows, setRows] = useState<Company[]>([]);
   const [usage, setUsage] = useState<Map<string, Usage>>(new Map());
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Company | null>(null);
+  const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({
+    company_name: '',
     account_type: '',
     monthly_included_hours: 0,
     care_plan_type: '',
@@ -85,8 +110,14 @@ function CompaniesPage() {
     active_status: true,
   });
   const [busy, setBusy] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [activeOnly, setActiveOnly] = useState(true);
+
+  // Import state
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importDiff, setImportDiff] = useState<DryRunResponse | null>(null);
+  const [importRows, setImportRows] = useState<CsvRow[]>([]);
+  const [createMissing, setCreateMissing] = useState(false);
+  const [applying, setApplying] = useState(false);
 
   const [visible, setVisible] = useState<Record<ColumnKey, boolean>>(() => {
     if (typeof window !== 'undefined') {
@@ -120,9 +151,17 @@ function CompaniesPage() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  const resetForm = () => setForm({
+    company_name: '', account_type: '', monthly_included_hours: 0, care_plan_type: '',
+    website: '', notes: '', active_status: true,
+  });
+
+  const startCreate = () => { resetForm(); setCreating(true); };
+
   const startEdit = (c: Company) => {
     setEditing(c);
     setForm({
+      company_name: c.company_name ?? '',
       account_type: c.account_type ?? '',
       monthly_included_hours: Number(c.monthly_included_hours ?? 0),
       care_plan_type: c.care_plan_type ?? '',
@@ -136,9 +175,10 @@ function CompaniesPage() {
     if (!editing) return;
     setBusy(true);
     try {
-      const res = await apiFetch(`/api/companies/${editing.id}`, {
+      await apiFetch(`/api/companies/${editing.id}`, {
         method: 'PUT',
         body: JSON.stringify({
+          company_name: form.company_name || editing.company_name,
           account_type: form.account_type || null,
           monthly_included_hours: Number(form.monthly_included_hours),
           care_plan_type: form.care_plan_type || null,
@@ -146,57 +186,120 @@ function CompaniesPage() {
           notes: form.notes || null,
           active_status: form.active_status,
         }),
-      }) as { ok: boolean; airtable?: { pushed: boolean; error?: string } };
-      if (res.airtable?.pushed) toast.success('Saved & synced to Airtable');
-      else if (res.airtable?.error) toast.success(`Saved (Airtable push failed: ${res.airtable.error})`);
-      else toast.success('Saved');
+      });
+      toast.success('Saved');
       setEditing(null);
       await load();
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(false); }
   };
 
-  const syncAirtable = async () => {
-    setSyncing(true);
+  const create = async () => {
+    if (!form.company_name.trim()) { toast.error('Company name is required'); return; }
+    setBusy(true);
     try {
-      let offset: string | null = null;
-      let runId: string | null = null;
-      let pulled = 0;
-      let created = 0;
-      let updated = 0;
-      let skippedInactive = 0;
-      let errorCount = 0;
-
-      do {
-        const res = await apiFetch('/api/airtable/sync', {
-          method: 'POST',
-          body: JSON.stringify({ offset, runId }),
-        }) as {
-          ok: boolean;
-          pulled: number;
-          created: number;
-          updated: number;
-          skippedInactive: number;
-          errors: Array<{ message: string }>;
-          done: boolean;
-          nextOffset: string | null;
-          runId: string;
-        };
-
-        runId = res.runId;
-        pulled += res.pulled;
-        created += res.created;
-        updated += res.updated;
-        skippedInactive += res.skippedInactive;
-        errorCount += res.errors.length;
-        offset = res.done ? null : res.nextOffset;
-      } while (offset);
-
-      toast.success(`Airtable: pulled ${pulled}, +${created} created, ${updated} updated, ${skippedInactive} inactive handled${errorCount ? `, ${errorCount} errors` : ''}`);
+      await apiFetch('/api/companies', {
+        method: 'POST',
+        body: JSON.stringify({
+          company_name: form.company_name.trim(),
+          account_type: form.account_type || null,
+          monthly_included_hours: Number(form.monthly_included_hours),
+          care_plan_type: form.care_plan_type || null,
+          website: form.website || null,
+          notes: form.notes || null,
+          active_status: form.active_status,
+        }),
+      });
+      toast.success('Company created');
+      setCreating(false);
+      resetForm();
       await load();
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
-    finally { setSyncing(false); }
+    finally { setBusy(false); }
   };
+
+  const remove = async (c: Company) => {
+    if (!confirm(`Delete "${c.company_name}"? This cannot be undone.`)) return;
+    try {
+      await apiFetch(`/api/companies/${c.id}`, { method: 'DELETE' });
+      toast.success('Deleted');
+      await load();
+    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
+  };
+
+  const toggleActive = async (c: Company) => {
+    try {
+      await apiFetch(`/api/companies/${c.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ active_status: c.active_status === false }),
+      });
+      await load();
+    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
+  };
+
+  const onCsvChosen = (file: File) => {
+    Papa.parse<Record<string, string>>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (result) => {
+        const parsed: CsvRow[] = [];
+        for (const r of result.data) {
+          const name = (r['Company'] ?? r['company'] ?? r['Company Name'] ?? '').trim();
+          if (!name) continue;
+          const website = (r['Websites'] ?? r['Website'] ?? r['website'] ?? '').trim() || null;
+          const carePlan = (r['Care Plan'] ?? r['care_plan'] ?? '').trim() || null;
+          const statusStr = (r['Active-Inactive'] ?? r['Status'] ?? r['active'] ?? 'Active').trim().toLowerCase();
+          parsed.push({
+            company_name: name,
+            website,
+            care_plan_type: carePlan,
+            active_status: statusStr === 'active' || statusStr === 'true' || statusStr === '1',
+          });
+        }
+        if (parsed.length === 0) { toast.error('No valid rows found in CSV'); return; }
+        setImportRows(parsed);
+        try {
+          const res = await apiFetch('/api/companies/import', {
+            method: 'POST',
+            body: JSON.stringify({ rows: parsed, createMissing: false }),
+          }) as DryRunResponse;
+          setImportDiff(res);
+        } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
+      },
+      error: (err) => toast.error(`CSV parse error: ${err.message}`),
+    });
+  };
+
+  const applyImport = async () => {
+    setApplying(true);
+    try {
+      const res = await apiFetch('/api/companies/import', {
+        method: 'POST',
+        body: JSON.stringify({ rows: importRows, confirm: true, createMissing }),
+      }) as { applied: boolean; summary: { updated: number; created: number; errors: number } };
+      toast.success(`Imported: ${res.summary.updated} updated, ${res.summary.created} created${res.summary.errors ? `, ${res.summary.errors} errors` : ''}`);
+      setImportDiff(null);
+      setImportRows([]);
+      setCreateMissing(false);
+      await load();
+    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
+    finally { setApplying(false); }
+  };
+
+  // Re-run dry-run when createMissing toggles
+  useEffect(() => {
+    if (!importDiff || importRows.length === 0) return;
+    (async () => {
+      try {
+        const res = await apiFetch('/api/companies/import', {
+          method: 'POST',
+          body: JSON.stringify({ rows: importRows, createMissing }),
+        }) as DryRunResponse;
+        setImportDiff(res);
+      } catch { /* ignore */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createMissing]);
 
   const isOn = (k: ColumnKey) => visible[k];
 
@@ -211,16 +314,29 @@ function CompaniesPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold">Companies</h2>
-          <p className="text-sm text-muted-foreground">Set monthly included hours and care plan type per company. Usage is from current sync data.</p>
+          <p className="text-sm text-muted-foreground">Manage company records, care plans, and monthly included hours.</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 mr-2">
             <Switch id="active-only" checked={activeOnly} onCheckedChange={setActiveOnly} />
             <Label htmlFor="active-only" className="text-sm">Active only</Label>
           </div>
-          <Button variant="outline" size="sm" onClick={syncAirtable} disabled={syncing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Syncing…' : 'Sync Airtable'}
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onCsvChosen(f);
+              e.target.value = '';
+            }}
+          />
+          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+            <Upload className="h-4 w-4 mr-2" />Import CSV
+          </Button>
+          <Button size="sm" onClick={startCreate}>
+            <Plus className="h-4 w-4 mr-2" />New company
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -258,16 +374,13 @@ function CompaniesPage() {
         </div>
       </div>
 
+      {/* Edit existing */}
       {editing && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Edit: {editing.company_name}
-              {editing.airtable_record_id && <Badge variant="secondary">Airtable linked</Badge>}
-            </CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Edit: {editing.company_name}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="col-span-2"><Label>Company name</Label><Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} /></div>
               <div><Label>Account type</Label><Input value={form.account_type} onChange={(e) => setForm({ ...form, account_type: e.target.value })} /></div>
               <div><Label>Care plan type</Label><Input value={form.care_plan_type} onChange={(e) => setForm({ ...form, care_plan_type: e.target.value })} /></div>
               <div><Label>Website</Label><Input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="example.com" /></div>
@@ -279,12 +392,97 @@ function CompaniesPage() {
               <Button onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>
               <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
             </div>
-            {editing.airtable_record_id && (
-              <p className="text-xs text-muted-foreground mt-2">Care plan, website, and active status will sync back to Airtable on save.</p>
-            )}
           </CardContent>
         </Card>
       )}
+
+      {/* Create dialog */}
+      <Dialog open={creating} onOpenChange={(v) => { setCreating(v); if (!v) resetForm(); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>New company</DialogTitle>
+            <DialogDescription>Add a customer manually.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2"><Label>Company name *</Label><Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} /></div>
+            <div><Label>Account type</Label><Input value={form.account_type} onChange={(e) => setForm({ ...form, account_type: e.target.value })} /></div>
+            <div><Label>Care plan type</Label><Input value={form.care_plan_type} onChange={(e) => setForm({ ...form, care_plan_type: e.target.value })} /></div>
+            <div><Label>Website</Label><Input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="example.com" /></div>
+            <div><Label>Monthly included hours</Label><Input type="number" step="0.5" value={form.monthly_included_hours} onChange={(e) => setForm({ ...form, monthly_included_hours: Number(e.target.value) })} /></div>
+            <div className="flex items-end gap-2"><Switch checked={form.active_status} onCheckedChange={(v) => setForm({ ...form, active_status: v })} /><Label>Active</Label></div>
+            <div className="col-span-2"><Label>Notes</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreating(false)}>Cancel</Button>
+            <Button onClick={create} disabled={busy}>{busy ? 'Creating…' : 'Create'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import preview dialog */}
+      <Dialog open={!!importDiff} onOpenChange={(v) => { if (!v) { setImportDiff(null); setImportRows([]); setCreateMissing(false); } }}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Import preview</DialogTitle>
+            <DialogDescription>Review changes before applying. Matched by company name (case-insensitive).</DialogDescription>
+          </DialogHeader>
+          {importDiff && (
+            <>
+              <div className="grid grid-cols-5 gap-2 text-sm">
+                <div className="border rounded p-2"><div className="text-muted-foreground">Total rows</div><div className="text-lg font-semibold">{importDiff.summary.total}</div></div>
+                <div className="border rounded p-2"><div className="text-muted-foreground">Will update</div><div className="text-lg font-semibold text-primary">{importDiff.summary.toUpdate}</div></div>
+                <div className="border rounded p-2"><div className="text-muted-foreground">Unchanged</div><div className="text-lg font-semibold">{importDiff.summary.unchanged}</div></div>
+                <div className="border rounded p-2"><div className="text-muted-foreground">Unmatched</div><div className="text-lg font-semibold">{importDiff.summary.unmatched}</div></div>
+                <div className="border rounded p-2"><div className="text-muted-foreground">Will create</div><div className="text-lg font-semibold">{importDiff.summary.toCreate}</div></div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch id="create-missing" checked={createMissing} onCheckedChange={setCreateMissing} />
+                <Label htmlFor="create-missing" className="text-sm">Create unmatched rows as new companies</Label>
+              </div>
+              <div className="overflow-auto border rounded">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Company (CSV)</TableHead>
+                    <TableHead>Changes</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {importDiff.diff.slice(0, 500).map((d, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          {d.status === 'update' && <Badge>Update</Badge>}
+                          {d.status === 'create' && <Badge variant="secondary">Create</Badge>}
+                          {d.status === 'unmatched' && <Badge variant="outline">Unmatched</Badge>}
+                          {d.status === 'no_change' && <Badge variant="outline">No change</Badge>}
+                        </TableCell>
+                        <TableCell className="text-sm">{d.csv.company_name}</TableCell>
+                        <TableCell className="text-xs">
+                          {d.status === 'update' ? (
+                            <ul className="space-y-0.5">
+                              {Object.entries(d.changes).map(([k, v]) => (
+                                <li key={k}><span className="font-mono">{k}</span>: <span className="text-muted-foreground">{String(v.from ?? '∅')}</span> → <span className="text-foreground">{String(v.to ?? '∅')}</span></li>
+                              ))}
+                            </ul>
+                          ) : d.status === 'create' || d.status === 'unmatched' ? (
+                            <span className="text-muted-foreground">website: {d.csv.website ?? '∅'} · plan: {d.csv.care_plan_type ?? '∅'} · {d.csv.active_status ? 'Active' : 'Inactive'}</span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {importDiff.diff.length > 500 && (
+                  <div className="p-2 text-xs text-muted-foreground text-center">Showing first 500 of {importDiff.diff.length} rows.</div>
+                )}
+              </div>
+            </>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setImportDiff(null); setImportRows([]); }}>Cancel</Button>
+            <Button onClick={applyImport} disabled={applying}>{applying ? 'Applying…' : 'Apply changes'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="border rounded-md overflow-x-auto">
         <Table>
@@ -308,14 +506,7 @@ function CompaniesPage() {
               const u = c.company_name ? usage.get(c.company_name) : undefined;
               return (
                 <TableRow key={c.id}>
-                  {isOn('company') && (
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {c.company_name ?? '—'}
-                        {c.airtable_record_id && <Badge variant="secondary" className="text-[10px]">AT</Badge>}
-                      </div>
-                    </TableCell>
-                  )}
+                  {isOn('company') && <TableCell className="font-medium">{c.company_name ?? '—'}</TableCell>}
                   {isOn('website') && (
                     <TableCell>
                       {c.website ? (
@@ -332,13 +523,28 @@ function CompaniesPage() {
                   {isOn('overage') && <TableCell className="text-right">{u ? u.overage_hours.toFixed(1) : '0.0'}</TableCell>}
                   {isOn('labor') && <TableCell className="text-right">${(u?.total_labor_cost ?? 0).toFixed(0)}</TableCell>}
                   {isOn('billable') && <TableCell className="text-right">${(u?.total_billable_value ?? 0).toFixed(0)}</TableCell>}
-                  {isOn('active') && <TableCell>{c.active_status === false ? <Badge variant="outline">Inactive</Badge> : <Badge>Active</Badge>}</TableCell>}
-                  {isOn('actions') && <TableCell><Button size="sm" variant="ghost" onClick={() => startEdit(c)}>Edit</Button></TableCell>}
+                  {isOn('active') && (
+                    <TableCell>
+                      <button onClick={() => toggleActive(c)} className="cursor-pointer">
+                        {c.active_status === false ? <Badge variant="outline">Inactive</Badge> : <Badge>Active</Badge>}
+                      </button>
+                    </TableCell>
+                  )}
+                  {isOn('actions') && (
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => startEdit(c)}>Edit</Button>
+                        <Button size="sm" variant="ghost" onClick={() => remove(c)} title="Delete">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
             {filteredRows.length === 0 && !loading && (
-              <TableRow><TableCell colSpan={visibleCount} className="text-center text-muted-foreground py-8">No companies. Run a sync.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={visibleCount} className="text-center text-muted-foreground py-8">No companies. Click "New company" or "Import CSV".</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
