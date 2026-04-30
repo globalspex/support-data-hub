@@ -43,9 +43,12 @@ interface Ticket {
 interface Member { id: string; name: string; }
 
 function TicketsPage() {
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<{
+    source_system: string; company_name: string; assigned_name_raw: string;
+    status: string[]; type: string; inbox: string; tag: string; date_from: string; date_to: string;
+  }>({
     source_system: '', company_name: '', assigned_name_raw: '',
-    status: '', type: '', inbox: '', tag: '', date_from: '', date_to: '',
+    status: [], type: '', inbox: '', tag: '', date_from: '', date_to: '',
   });
   const [rows, setRows] = useState<Ticket[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
