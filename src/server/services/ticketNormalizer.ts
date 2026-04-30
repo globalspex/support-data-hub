@@ -38,6 +38,7 @@ const lookupIncluded = (
 export function normalizeTeamworkTask(
   raw: RawTicket,
   baseUrl: string,
+  loggedHoursByTaskId?: Map<string, number>,
 ): NormalizedTicket {
   const t = raw.raw as Record<string, unknown>;
   const included = t._included as Record<string, Record<string, Record<string, unknown>>> | undefined;
@@ -61,6 +62,8 @@ export function normalizeTeamworkTask(
 
   const base = baseUrl.replace(/\/+$/, '');
 
+  const logged = loggedHoursByTaskId?.get(raw.externalId);
+
   return {
     source_system: 'teamwork',
     external_ticket_id: raw.externalId,
@@ -78,7 +81,7 @@ export function normalizeTeamworkTask(
     created_at_source: s(t.createdAt ?? t.dateAdded),
     updated_at_source: s(t.updatedAt ?? t.lastChangedOn),
     closed_at_source: s(t.completedOn ?? t.completedAt),
-    actual_logged_time: null, // populated separately from time_entries in a later phase
+    actual_logged_time: logged !== undefined ? logged : null,
     raw_payload: t,
   };
 }

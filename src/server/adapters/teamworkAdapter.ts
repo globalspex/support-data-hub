@@ -82,4 +82,36 @@ export const teamworkAdapter: SourceAdapter = {
     }
     return out;
   },
+
+  async fetchTimeEntriesByTaskId(cfg) {
+    // Teamwork v3 time entries — sum hours+minutes per task.
+    const totals = new Map<string, number>();
+    let page = 1;
+    while (page < 500) {
+      const data = (await tw(
+        cfg,
+        `/projects/api/v3/time.json?page=${page}&pageSize=500`,
+      )) as {
+        timelogs?: Array<Record<string, unknown>>;
+        timeEntries?: Array<Record<string, unknown>>;
+      };
+      const list = data.timelogs ?? data.timeEntries ?? [];
+      if (list.length === 0) break;
+      for (const entry of list) {
+        const taskId =
+          (entry.taskId as string | number | undefined) ??
+          ((entry.task as { id?: string | number } | undefined)?.id);
+        if (taskId === undefined || taskId === null) continue;
+        const hours = Number(entry.hours ?? 0);
+        const minutes = Number(entry.minutes ?? 0);
+        const decimalHours = hours + minutes / 60;
+        if (!Number.isFinite(decimalHours) || decimalHours <= 0) continue;
+        const key = String(taskId);
+        totals.set(key, (totals.get(key) ?? 0) + decimalHours);
+      }
+      if (list.length < 500) break;
+      page++;
+    }
+    return totals;
+  },
 };

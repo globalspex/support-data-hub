@@ -92,11 +92,24 @@ export async function runSync(source: SourceName) {
     const raws = await adapter.fetchTickets(cfg);
     received = raws.length;
 
+    // Fetch logged-time totals (Teamwork Projects only — Desk includes timeSpent inline).
+    let loggedHoursByTaskId: Map<string, number> | undefined;
+    if (source === 'teamwork' && adapter.fetchTimeEntriesByTaskId) {
+      try {
+        loggedHoursByTaskId = await adapter.fetchTimeEntriesByTaskId(cfg);
+      } catch (e) {
+        errors.push({
+          stage: 'time_entries',
+          message: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+
     for (const r of raws) {
       try {
         const normalized: NormalizedTicket =
           source === 'teamwork'
-            ? normalizeTeamworkTask(r, cfg.baseUrl)
+            ? normalizeTeamworkTask(r, cfg.baseUrl, loggedHoursByTaskId)
             : normalizeDeskTicket(r, cfg.baseUrl);
 
         const { data: existing } = await supabaseAdmin
