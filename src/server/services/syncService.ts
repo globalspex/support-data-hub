@@ -4,6 +4,7 @@ import { teamworkDeskAdapter } from '../adapters/teamworkDeskAdapter';
 import type { SourceAdapter, SourceName, ConnectionConfig } from '../adapters/types';
 import { normalizeTeamworkTask, normalizeDeskTicket, type NormalizedTicket } from './ticketNormalizer';
 import { recalculate } from './calcService';
+import { autoMapAssignees } from './autoMapService';
 
 const ADAPTERS: Record<SourceName, SourceAdapter> = {
   teamwork: teamworkAdapter,
@@ -152,6 +153,14 @@ export async function runSync(source: SourceName) {
       .from('integration_connections')
       .update({ last_sync_at: new Date().toISOString(), status: status === 'error' ? 'error' : 'ok' })
       .eq('source_name', source);
+
+    // Auto-map raw assignees to team members by exact name match (best-effort).
+    try {
+      const am = await autoMapAssignees(source);
+      errors.push({ stage: 'auto_map', message: `created=${am.created} ambiguous=${am.ambiguous} noMatch=${am.noMatch}` });
+    } catch (amErr) {
+      errors.push({ stage: 'auto_map', message: amErr instanceof Error ? amErr.message : String(amErr) });
+    }
 
     // Run scoped recalc after the sync so calculated fields are fresh
     try {
