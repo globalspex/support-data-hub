@@ -25,10 +25,30 @@ interface Run {
   error_details: unknown;
 }
 
+interface VerificationSampleRow {
+  external_ticket_id: string;
+  ticket_title: string | null;
+  actual_logged_time: number | null;
+  ticket_url: string | null;
+}
+
+interface Verification {
+  source: string;
+  totals: {
+    total: number;
+    withLoggedTime: number;
+    zeroOrNull: number;
+    totalLoggedHours: number;
+  };
+  sample: VerificationSampleRow[];
+}
+
 function SyncRunsPage() {
   const [rows, setRows] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<string | null>(null);
+  const [verifications, setVerifications] = useState<Record<string, Verification>>({});
+  const [verifyLoading, setVerifyLoading] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,7 +62,32 @@ function SyncRunsPage() {
     }
   }, []);
 
+  const loadVerification = useCallback(async (source: string) => {
+    setVerifyLoading((s) => ({ ...s, [source]: true }));
+    try {
+      const data = (await apiFetch(
+        `/api/sync-runs/verification?source=${encodeURIComponent(source)}`,
+      )) as Verification;
+      setVerifications((s) => ({ ...s, [source]: data }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setVerifyLoading((s) => ({ ...s, [source]: false }));
+    }
+  }, []);
+
   useEffect(() => { load(); }, [load]);
+
+  // Auto-load verification for each unique source on first render of the rows
+  useEffect(() => {
+    const sources = Array.from(new Set(rows.map((r) => r.source_name)));
+    sources.forEach((src) => {
+      if (!verifications[src] && !verifyLoading[src]) loadVerification(src);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
+
+  const sources = Array.from(new Set(rows.map((r) => r.source_name)));
 
   return (
     <div className="space-y-6">
@@ -54,6 +99,91 @@ function SyncRunsPage() {
         </div>
         <Button variant="outline" onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</Button>
       </div>
+
+      {sources.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Time Sync Verification</h3>
+          <p className="text-sm text-muted-foreground">
+            Confirms how many tickets received logged time. Use the sample to spot-check
+            individual ticket totals against the source system.
+          </p>
+          {sources.map((src) => {
+            const v = verifications[src];
+            const isLoading = verifyLoading[src];
+            return (
+              <div key={src} className="border rounded-md p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{src}</Badge>
+                    {v && (
+                      <span className="text-sm text-muted-foreground">
+                        {v.totals.withLoggedTime.toLocaleString()} of{' '}
+                        {v.totals.total.toLocaleString()} tickets have logged time
+                        {' • '}
+                        {v.totals.totalLoggedHours.toLocaleString()} h total
+                        {' • '}
+                        {v.totals.zeroOrNull.toLocaleString()} at 0/null
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => loadVerification(src)}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Checking…' : 'Re-check'}
+                  </Button>
+                </div>
+
+                {v && v.sample.length > 0 && (
+                  <div className="border rounded-md overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Task ID</TableHead>
+                          <TableHead>Title</TableHead>
+                          <TableHead className="text-right">Hours</TableHead>
+                          <TableHead>Link</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {v.sample.map((row) => (
+                          <TableRow key={row.external_ticket_id}>
+                            <TableCell className="font-mono text-xs">{row.external_ticket_id}</TableCell>
+                            <TableCell className="text-sm max-w-md truncate">{row.ticket_title ?? '—'}</TableCell>
+                            <TableCell className="text-right font-mono">
+                              {Number(row.actual_logged_time ?? 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              {row.ticket_url ? (
+                                <a
+                                  href={row.ticket_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-primary text-xs underline"
+                                >
+                                  Open
+                                </a>
+                              ) : '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {v && v.sample.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No tickets have logged time yet for this source. Run a sync first.
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="border rounded-md overflow-x-auto">
         <Table>
