@@ -65,16 +65,21 @@ export const teamworkDeskAdapter: SourceAdapter = {
   async fetchTickets(cfg, opts) {
     const out: RawTicket[] = [];
 
-    // Fetch ticket types once (small list) so we can resolve type names
+    // Fetch ticket types once (small list) so we can resolve type names from ticket type references.
     const ticketTypesById: Record<string, Record<string, unknown>> = {};
     try {
-      const tt = (await desk(cfg, '/tickettypes.json')) as {
-        ticketTypes?: Array<Record<string, unknown>>;
-        tickettypes?: Array<Record<string, unknown>>;
-      };
-      const list = tt.ticketTypes ?? tt.tickettypes ?? [];
-      for (const item of list) {
-        if (item.id !== undefined) ticketTypesById[String(item.id)] = item;
+      let typePage = 1;
+      while (typePage < 20) {
+        const tt = (await desk(cfg, `/tickettypes.json?page=${typePage}&pageSize=100`)) as {
+          ticketTypes?: Array<Record<string, unknown>>;
+          tickettypes?: Array<Record<string, unknown>>;
+        };
+        const list = tt.ticketTypes ?? tt.tickettypes ?? [];
+        for (const item of list) {
+          if (item.id !== undefined) ticketTypesById[String(item.id)] = item;
+        }
+        if (list.length < 100) break;
+        typePage++;
       }
     } catch {
       // non-fatal
@@ -113,7 +118,7 @@ export const teamworkDeskAdapter: SourceAdapter = {
         }
         out.push({
           externalId: String(t.id),
-          raw: { ...t, _included: included },
+          raw: { ...t, _included: included, _ticketTypesById: ticketTypesById },
         });
       }
       if (stopAfterPage) break;
