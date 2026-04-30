@@ -34,7 +34,11 @@ export const Route = createFileRoute('/api/tickets')({
           if (list.length === 1) q = q.eq('status', list[0]);
           else if (list.length > 1) q = q.in('status', list);
         });
-        set('type', (v) => { q = q.eq('type', v); });
+        set('type', (v) => {
+          const list = v.split(',').map((s) => s.trim()).filter(Boolean);
+          if (list.length === 1) q = q.eq('type', list[0]);
+          else if (list.length > 1) q = q.in('type', list);
+        });
         set('inbox', (v) => { q = q.eq('inbox', v); });
         set('tag', (v) => { q = q.contains('tags', [v]); });
         set('date_from', (v) => { q = q.gte('created_at_source', v); });
