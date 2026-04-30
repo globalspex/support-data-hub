@@ -50,7 +50,17 @@ export interface RunSyncOptions {
   fullHistory?: boolean;
 }
 
-export async function runSync(source: SourceName, opts: RunSyncOptions = {}) {
+export async function createSyncRun(source: SourceName): Promise<string> {
+  const { data: runRow, error: runErr } = await supabaseAdmin
+    .from('sync_runs')
+    .insert({ source_name: source, sync_type: 'manual', status: 'running' })
+    .select('id')
+    .single();
+  if (runErr || !runRow) throw new Error(runErr?.message ?? 'Failed to create sync run');
+  return runRow.id;
+}
+
+export async function runSync(source: SourceName, opts: RunSyncOptions = {}, existingRunId?: string) {
   const row = await getIntegration(source);
   if (!row || !row.is_enabled || !row.base_url || !row.api_key_or_token) {
     throw new Error(`Integration "${source}" is not configured/enabled.`);
@@ -77,12 +87,8 @@ export async function runSync(source: SourceName, opts: RunSyncOptions = {}) {
   }
   const windowMessage = since ? `since=${since.toISOString()}` : 'since=ALL';
 
-  const { data: runRow, error: runErr } = await supabaseAdmin
-    .from('sync_runs')
-    .insert({ source_name: source, sync_type: 'manual', status: 'running' })
-    .select()
-    .single();
-  if (runErr || !runRow) throw new Error(runErr?.message ?? 'Failed to create sync run');
+  const runId = existingRunId ?? (await createSyncRun(source));
+  const runRow = { id: runId };
 
   const errors: Array<{ stage: string; message: string }> = [];
   const info: Array<{ stage: string; message: string }> = [{ stage: 'window', message: windowMessage }];
