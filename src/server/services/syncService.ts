@@ -157,9 +157,18 @@ export async function runSync(source: SourceName) {
     // Auto-map raw assignees to team members by exact name match (best-effort).
     try {
       const am = await autoMapAssignees(source);
-      errors.push({ stage: 'auto_map', message: `created=${am.created} ambiguous=${am.ambiguous} noMatch=${am.noMatch}` });
+      const infoEntry = { stage: 'auto_map', message: `created=${am.created} ambiguous=${am.ambiguous} noMatch=${am.noMatch}` };
+      const merged = [...errors, infoEntry].slice(0, 50);
+      await supabaseAdmin
+        .from('sync_runs')
+        .update({ error_details: merged })
+        .eq('id', runRow.id);
     } catch (amErr) {
       errors.push({ stage: 'auto_map', message: amErr instanceof Error ? amErr.message : String(amErr) });
+      await supabaseAdmin
+        .from('sync_runs')
+        .update({ error_count: errors.length, error_details: errors.slice(0, 50) })
+        .eq('id', runRow.id);
     }
 
     // Run scoped recalc after the sync so calculated fields are fresh
