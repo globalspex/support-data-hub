@@ -29,7 +29,11 @@ export const Route = createFileRoute('/api/tickets')({
         set('source_system', (v) => { q = q.eq('source_system', v); });
         set('company_name', (v) => { q = q.ilike('company_name', `%${v}%`); });
         set('assigned_name_raw', (v) => { q = q.ilike('assigned_name_raw', `%${v}%`); });
-        set('status', (v) => { q = q.eq('status', v); });
+        set('status', (v) => {
+          const list = v.split(',').map((s) => s.trim()).filter(Boolean);
+          if (list.length === 1) q = q.eq('status', list[0]);
+          else if (list.length > 1) q = q.in('status', list);
+        });
         set('type', (v) => { q = q.eq('type', v); });
         set('inbox', (v) => { q = q.eq('inbox', v); });
         set('tag', (v) => { q = q.contains('tags', [v]); });
