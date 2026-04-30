@@ -1,50 +1,62 @@
+## Auto-map + Bulk-map assignees
 
+Goal: stop hand-mapping every raw assignee. Auto-create mappings whenever a sync sees a raw name that exactly matches an active team member, and give you one screen to bulk-map the rest.
 
-## Fix: Time Not Syncing from Teamwork
+### What changes for you
 
-### Root cause
+**On the Mappings page (`/admin/mappings`):**
+- New top bar with two buttons:
+  - **Auto-map by name** — scans all unmapped raw assignees, links any whose name matches an active team member (case/whitespace-insensitive). Shows a toast: "Mapped 12, 3 had no match."
+  - **Save bulk mappings** — appears only when you've picked team members in the bulk panel below.
+- The "Unmapped assignees" table gets a "Map to" dropdown per row that *stages* the choice instead of saving immediately. You pick for several rows, then click **Save bulk mappings** once. Recalculation runs once at the end (faster than per-row).
+- A small note explains: "Auto-map runs automatically on every sync. Use this button to re-run it now."
 
-In `src/server/services/ticketNormalizer.ts:81`, Teamwork (Projects) tasks always set `actual_logged_time: null` with a comment saying "populated separately from time_entries in a later phase" — that phase was never built. Confirmed in DB: 0 of 9709 tickets have any logged time.
+**On every sync:**
+- After tickets are pulled, before recalculation, the system auto-creates mappings for any raw assignees whose name matches an active team member. You'll see the count in the sync run summary (e.g. "Auto-mapped 4 new assignees").
 
-(Teamwork **Desk** tickets correctly read `t.timeSpent` on line 138 — so this is Projects-only.)
+### What stays the same
 
-### Fix
+- Existing mappings are never overwritten. Auto-map only fills gaps.
+- Manual one-row dropdowns on the Mapped table still work (to fix or clear a mapping).
+- Money columns (Labor / Billable) still come from the mapped team member's rates.
 
-Fetch time entries from Teamwork v3 in bulk during sync, aggregate by `taskId`, and write the totals onto each ticket.
+### Matching rules
 
-1. **New adapter method** `fetchTimeEntriesByTaskId(cfg)` in `src/server/adapters/teamworkAdapter.ts`:
-   - Calls `GET /projects/api/v3/time.json?page=N&pageSize=500` (paginated)
-   - Sums `minutes + hours*60` per `taskId` → returns `Map<string, number>` of total **minutes** per task ID
-   - Same auth/pagination pattern as `fetchTickets`
+- Compare `assigned_name_raw` (lowercased, trimmed, collapsed whitespace) to `team_members.name` (same normalization), only `active_status = true` members.
+- If exactly one team member matches → create mapping.
+- If zero or 2+ match → skip (left for you to resolve in the bulk panel).
+- Mapping is keyed by `source_name` + `raw_assigned_id` when available, otherwise by `raw_assigned_name`.
 
-2. **Update `syncService.runSync`** (`src/server/services/syncService.ts`):
-   - For Teamwork only: after `fetchTickets`, call `fetchTimeEntriesByTaskId` and pass the map into the normalize step
-   - Set `normalized.actual_logged_time = (timeMap.get(externalId) ?? 0) / 60` (convert to hours, matching the units the rest of the app already uses for `monthly_included_hours`, etc.)
+### Technical changes
 
-3. **Normalizer signature**: change `normalizeTeamworkTask(raw, baseUrl, loggedHours)` to accept the lookup result (or a map) and write it into `actual_logged_time`.
+**New service: `src/server/services/autoMapService.ts`**
+- `autoMapAssignees(source?: SourceName)` — loads active `team_members`, loads existing `assigned_name_mappings`, queries distinct unmapped raw assignees from `tickets` (filtered by source if provided), inserts mappings for unique name matches. Returns `{ created, ambiguous, noMatch }`.
 
-4. **Recalc** already runs at the end of `runSync` and reads `actual_logged_time` to compute `final_reportable_time` / `labor_cost` / `billable_value`, so once times populate, all downstream numbers update automatically.
+**Sync integration: `src/server/services/syncService.ts`**
+- After ticket upsert, before `recalculate({ kind: 'source', source })`, call `autoMapAssignees(source)` and stash the count in `sync_runs.error_details` as an info entry (or a new column — using existing `error_details` JSON keeps the migration small; entries with `stage: 'auto_map'` aren't errors, just info).
 
-### Units sanity check
+**New endpoints:**
+- `POST /api/assigned-mappings/auto-map` (`src/routes/api/assigned-mappings.auto-map.ts`) — admin-only, calls `autoMapAssignees()` for all sources, then `recalculate({ kind: 'all' })`. Returns counts.
+- `POST /api/assigned-mappings/bulk` (`src/routes/api/assigned-mappings.bulk.ts`) — admin-only, accepts `{ items: [{ source_name, raw_assigned_name, raw_assigned_id, team_member_id }] }`, validates with Zod, inserts all rows in one batch, then runs `recalculate({ kind: 'all' })` once. Returns `{ created, skipped }`.
 
-- Teamwork time entries return `hours` (int) + `minutes` (int) per entry → store as **hours decimal** in `actual_logged_time` (e.g., 1h 30m = 1.5).
-- This matches `monthly_included_hours` and existing report aggregation in `reportService.ts`.
+**UI: `src/routes/admin.mappings.tsx`**
+- Add `bulkSelections` state: `Record<rowKey, team_member_id>`.
+- Change the unmapped table's `onChange` to update state instead of POSTing.
+- Add header buttons: **Auto-map by name** (calls auto-map endpoint, then `load()`) and **Save bulk mappings** (POSTs `/bulk` with collected items, then clears state and `load()`).
+- Disable buttons while busy; show toast with returned counts.
 
-### Files touched
+### Migrations
 
-- `src/server/adapters/teamworkAdapter.ts` — add `fetchTimeEntriesByTaskId`
-- `src/server/adapters/types.ts` — extend `SourceAdapter` with optional `fetchTimeEntriesByTaskId?`
-- `src/server/services/ticketNormalizer.ts` — accept logged-hours arg
-- `src/server/services/syncService.ts` — fetch + pass times into normalize
+None. Uses existing `assigned_name_mappings` and `team_members` tables.
 
-After deploy: click **Sync now** on Integrations to backfill. Existing tickets will get their times on the next sync (the upsert by `external_ticket_id` updates in place).
+### Files
+
+- New: `src/server/services/autoMapService.ts`
+- New: `src/routes/api/assigned-mappings.auto-map.ts`
+- New: `src/routes/api/assigned-mappings.bulk.ts`
+- Edit: `src/server/services/syncService.ts` (call auto-map before recalc)
+- Edit: `src/routes/admin.mappings.tsx` (bulk staging + two new buttons)
 
 ### Open question
 
-If the Teamwork `/time.json` endpoint returns thousands of entries and the sync hits the worker timeout again, do you want me to:
-
-- **(a)** Page time entries client-side just like the Airtable fix (browser loops calling sync until done), or
-- **(b)** Just fetch everything server-side and rely on the request finishing in time (simpler, may need batching later)?
-
-Recommended: **(b)** first — time.json is usually fast. We can add pagination if it times out.
-
+When auto-map finds **two team members with the same name** (rare, but possible if you have two "Alex"), it skips that raw assignee. Do you want me to (a) skip silently and let you map manually, or (b) surface a count + a list in the bulk panel so you know which ones need attention? Default if you don't pick: **(b)**.

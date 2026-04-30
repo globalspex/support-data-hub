@@ -42,6 +42,8 @@ import { Route as ApiIntegrationsTestRouteImport } from './routes/api/integratio
 import { Route as ApiIntegrationsSyncRouteImport } from './routes/api/integrations.sync'
 import { Route as ApiCompaniesImportRouteImport } from './routes/api/companies.import'
 import { Route as ApiCompaniesIdRouteImport } from './routes/api/companies.$id'
+import { Route as ApiAssignedMappingsBulkRouteImport } from './routes/api/assigned-mappings.bulk'
+import { Route as ApiAssignedMappingsAutoMapRouteImport } from './routes/api/assigned-mappings.auto-map'
 import { Route as ApiAssignedMappingsIdRouteImport } from './routes/api/assigned-mappings.$id'
 
 const LoginRoute = LoginRouteImport.update({
@@ -209,6 +211,17 @@ const ApiCompaniesIdRoute = ApiCompaniesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiCompaniesRoute,
 } as any)
+const ApiAssignedMappingsBulkRoute = ApiAssignedMappingsBulkRouteImport.update({
+  id: '/bulk',
+  path: '/bulk',
+  getParentRoute: () => ApiAssignedMappingsRoute,
+} as any)
+const ApiAssignedMappingsAutoMapRoute =
+  ApiAssignedMappingsAutoMapRouteImport.update({
+    id: '/auto-map',
+    path: '/auto-map',
+    getParentRoute: () => ApiAssignedMappingsRoute,
+  } as any)
 const ApiAssignedMappingsIdRoute = ApiAssignedMappingsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -238,6 +251,8 @@ export interface FileRoutesByFullPath {
   '/api/tickets': typeof ApiTicketsRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
+  '/api/assigned-mappings/auto-map': typeof ApiAssignedMappingsAutoMapRoute
+  '/api/assigned-mappings/bulk': typeof ApiAssignedMappingsBulkRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/companies/import': typeof ApiCompaniesImportRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
@@ -273,6 +288,8 @@ export interface FileRoutesByTo {
   '/api/tickets': typeof ApiTicketsRouteWithChildren
   '/admin': typeof AdminIndexRoute
   '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
+  '/api/assigned-mappings/auto-map': typeof ApiAssignedMappingsAutoMapRoute
+  '/api/assigned-mappings/bulk': typeof ApiAssignedMappingsBulkRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/companies/import': typeof ApiCompaniesImportRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
@@ -310,6 +327,8 @@ export interface FileRoutesById {
   '/api/tickets': typeof ApiTicketsRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
+  '/api/assigned-mappings/auto-map': typeof ApiAssignedMappingsAutoMapRoute
+  '/api/assigned-mappings/bulk': typeof ApiAssignedMappingsBulkRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/companies/import': typeof ApiCompaniesImportRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
@@ -348,6 +367,8 @@ export interface FileRouteTypes {
     | '/api/tickets'
     | '/admin/'
     | '/api/assigned-mappings/$id'
+    | '/api/assigned-mappings/auto-map'
+    | '/api/assigned-mappings/bulk'
     | '/api/companies/$id'
     | '/api/companies/import'
     | '/api/integrations/sync'
@@ -383,6 +404,8 @@ export interface FileRouteTypes {
     | '/api/tickets'
     | '/admin'
     | '/api/assigned-mappings/$id'
+    | '/api/assigned-mappings/auto-map'
+    | '/api/assigned-mappings/bulk'
     | '/api/companies/$id'
     | '/api/companies/import'
     | '/api/integrations/sync'
@@ -419,6 +442,8 @@ export interface FileRouteTypes {
     | '/api/tickets'
     | '/admin/'
     | '/api/assigned-mappings/$id'
+    | '/api/assigned-mappings/auto-map'
+    | '/api/assigned-mappings/bulk'
     | '/api/companies/$id'
     | '/api/companies/import'
     | '/api/integrations/sync'
@@ -685,6 +710,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCompaniesIdRouteImport
       parentRoute: typeof ApiCompaniesRoute
     }
+    '/api/assigned-mappings/bulk': {
+      id: '/api/assigned-mappings/bulk'
+      path: '/bulk'
+      fullPath: '/api/assigned-mappings/bulk'
+      preLoaderRoute: typeof ApiAssignedMappingsBulkRouteImport
+      parentRoute: typeof ApiAssignedMappingsRoute
+    }
+    '/api/assigned-mappings/auto-map': {
+      id: '/api/assigned-mappings/auto-map'
+      path: '/auto-map'
+      fullPath: '/api/assigned-mappings/auto-map'
+      preLoaderRoute: typeof ApiAssignedMappingsAutoMapRouteImport
+      parentRoute: typeof ApiAssignedMappingsRoute
+    }
     '/api/assigned-mappings/$id': {
       id: '/api/assigned-mappings/$id'
       path: '/$id'
@@ -723,10 +762,14 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface ApiAssignedMappingsRouteChildren {
   ApiAssignedMappingsIdRoute: typeof ApiAssignedMappingsIdRoute
+  ApiAssignedMappingsAutoMapRoute: typeof ApiAssignedMappingsAutoMapRoute
+  ApiAssignedMappingsBulkRoute: typeof ApiAssignedMappingsBulkRoute
 }
 
 const ApiAssignedMappingsRouteChildren: ApiAssignedMappingsRouteChildren = {
   ApiAssignedMappingsIdRoute: ApiAssignedMappingsIdRoute,
+  ApiAssignedMappingsAutoMapRoute: ApiAssignedMappingsAutoMapRoute,
+  ApiAssignedMappingsBulkRoute: ApiAssignedMappingsBulkRoute,
 }
 
 const ApiAssignedMappingsRouteWithChildren =

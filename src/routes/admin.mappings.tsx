@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -33,11 +33,17 @@ interface MappingResp {
   unmapped: Unmapped[];
 }
 
+const rowKey = (u: Unmapped) =>
+  `${u.source_name}::${u.raw_assigned_id ?? ''}::${u.raw_assigned_name ?? ''}`;
+
 function MappingsPage() {
   const [data, setData] = useState<MappingResp>({ mapped: [], unmapped: [] });
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [autoBusy, setAutoBusy] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkSelections, setBulkSelections] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,6 +54,7 @@ function MappingsPage() {
       ]);
       setData(m as MappingResp);
       setMembers((tm as Member[]).map((x) => ({ id: x.id, name: x.name })));
+      setBulkSelections({});
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   }, []);
@@ -66,31 +73,62 @@ function MappingsPage() {
     finally { setBusyKey(null); }
   };
 
-  const createMapping = async (u: Unmapped, team_member_id: string) => {
-    const key = `${u.source_name}::${u.raw_assigned_id ?? u.raw_assigned_name}`;
-    setBusyKey(key);
+  const runAutoMap = async () => {
+    setAutoBusy(true);
     try {
-      await apiFetch('/api/assigned-mappings', {
-        method: 'POST',
-        body: JSON.stringify({
-          source_name: u.source_name,
-          raw_assigned_name: u.raw_assigned_name,
-          raw_assigned_id: u.raw_assigned_id,
-          team_member_id,
-        }),
-      });
-      toast.success('Mapped & recalculated');
+      const r = await apiFetch('/api/assigned-mappings/auto-map', { method: 'POST' }) as {
+        created: number; ambiguous: number; noMatch: number; skippedExisting: number;
+      };
+      toast.success(`Auto-mapped ${r.created}. ${r.ambiguous} ambiguous, ${r.noMatch} no match.`);
       await load();
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
-    finally { setBusyKey(null); }
+    finally { setAutoBusy(false); }
+  };
+
+  const stagedCount = useMemo(
+    () => Object.values(bulkSelections).filter(Boolean).length,
+    [bulkSelections],
+  );
+
+  const saveBulk = async () => {
+    const items = data.unmapped
+      .map((u) => ({ u, tm: bulkSelections[rowKey(u)] }))
+      .filter((x) => !!x.tm)
+      .map(({ u, tm }) => ({
+        source_name: u.source_name,
+        raw_assigned_name: u.raw_assigned_name,
+        raw_assigned_id: u.raw_assigned_id,
+        team_member_id: tm,
+      }));
+    if (items.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const r = await apiFetch('/api/assigned-mappings/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ items }),
+      }) as { created: number };
+      toast.success(`Saved ${r.created} mapping${r.created === 1 ? '' : 's'} & recalculated.`);
+      await load();
+    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
+    finally { setBulkBusy(false); }
   };
 
   return (
     <div className="space-y-6">
       <Toaster />
-      <div>
-        <h2 className="text-2xl font-semibold">Assigned Name Mappings</h2>
-        <p className="text-sm text-muted-foreground">Map raw assignee names from each source to internal team members. Multiple raw names may map to one member.</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-semibold">Assigned Name Mappings</h2>
+          <p className="text-sm text-muted-foreground">Map raw assignee names from each source to internal team members. Auto-map runs on every sync; use the buttons below to trigger it now or to bulk-map leftovers.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={runAutoMap} disabled={autoBusy || bulkBusy}>
+            {autoBusy ? 'Auto-mapping…' : 'Auto-map by name'}
+          </Button>
+          <Button onClick={saveBulk} disabled={bulkBusy || autoBusy || stagedCount === 0}>
+            {bulkBusy ? 'Saving…' : `Save bulk mappings${stagedCount ? ` (${stagedCount})` : ''}`}
+          </Button>
+        </div>
       </div>
 
       {members.length === 0 && (
@@ -103,36 +141,44 @@ function MappingsPage() {
           {loading ? <p className="text-muted-foreground">Loading…</p> : data.unmapped.length === 0 ? (
             <p className="text-sm text-muted-foreground">All assignees are mapped.</p>
           ) : (
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Source</TableHead><TableHead>Raw name</TableHead><TableHead>Raw ID</TableHead>
-                <TableHead className="text-right">Tickets</TableHead><TableHead>Map to</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {data.unmapped.map((u) => {
-                  const key = `${u.source_name}::${u.raw_assigned_id ?? u.raw_assigned_name}`;
-                  return (
-                    <TableRow key={key}>
-                      <TableCell><Badge variant="outline">{u.source_name}</Badge></TableCell>
-                      <TableCell>{u.raw_assigned_name ?? '—'}</TableCell>
-                      <TableCell className="font-mono text-xs">{u.raw_assigned_id ?? '—'}</TableCell>
-                      <TableCell className="text-right">{u.ticket_count}</TableCell>
-                      <TableCell>
-                        <select
-                          className="h-9 px-2 border rounded-md bg-background text-sm"
-                          disabled={busyKey === key || members.length === 0}
-                          defaultValue=""
-                          onChange={(e) => { if (e.target.value) createMapping(u, e.target.value); }}
-                        >
-                          <option value="">Select team member…</option>
-                          {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                        </select>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <>
+              <p className="text-xs text-muted-foreground mb-3">Pick a team member for one or more rows, then click <strong>Save bulk mappings</strong> at the top. Recalculation runs once at the end.</p>
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Source</TableHead><TableHead>Raw name</TableHead><TableHead>Raw ID</TableHead>
+                  <TableHead className="text-right">Tickets</TableHead><TableHead>Map to</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {data.unmapped.map((u) => {
+                    const key = rowKey(u);
+                    return (
+                      <TableRow key={key}>
+                        <TableCell><Badge variant="outline">{u.source_name}</Badge></TableCell>
+                        <TableCell>{u.raw_assigned_name ?? '—'}</TableCell>
+                        <TableCell className="font-mono text-xs">{u.raw_assigned_id ?? '—'}</TableCell>
+                        <TableCell className="text-right">{u.ticket_count}</TableCell>
+                        <TableCell>
+                          <select
+                            className="h-9 px-2 border rounded-md bg-background text-sm"
+                            disabled={members.length === 0 || bulkBusy || autoBusy}
+                            value={bulkSelections[key] ?? ''}
+                            onChange={(e) => setBulkSelections((prev) => {
+                              const next = { ...prev };
+                              if (e.target.value) next[key] = e.target.value;
+                              else delete next[key];
+                              return next;
+                            })}
+                          >
+                            <option value="">Select team member…</option>
+                            {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                          </select>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </>
           )}
         </CardContent>
       </Card>
