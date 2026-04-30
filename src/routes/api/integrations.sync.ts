@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
-import { runSync, createSyncRun, getIntegration } from '@/server/services/syncService';
+import { createSyncRun, getIntegration } from '@/server/services/syncService';
 import { requireAdminFromRequest, jsonResponse } from '@/server/services/apiAuth';
 import { supabaseAdmin } from '@/integrations/supabase/client.server';
 import type { SourceName } from '@/server/adapters/types';
@@ -8,27 +8,25 @@ import type { SourceName } from '@/server/adapters/types';
 const Body = z.object({ source_name: z.enum(['teamwork', 'teamwork_desk']).optional() });
 
 /**
- * Fire-and-forget runner. Marks the sync_runs row as error if it throws.
- * Not awaited by the HTTP handler so the response can return immediately —
- * this dodges Cloudflare's gateway timeout (504) for long syncs.
+ * Kick off a sync in a separate Worker invocation by self-fetching the
+ * internal runner endpoint and abandoning the response. This gives the long
+ * sync its own time/CPU budget and lets us return to the client immediately,
+ * avoiding the Cloudflare gateway 504.
  */
-function startBackgroundSync(source: SourceName, runId: string) {
-  void runSync(source, {}, runId).catch(async (e) => {
-    const message = e instanceof Error ? e.message : String(e);
-    try {
-      await supabaseAdmin
-        .from('sync_runs')
-        .update({
-          finished_at: new Date().toISOString(),
-          status: 'error',
-          error_count: 1,
-          error_details: [{ stage: 'background', message }],
-        })
-        .eq('id', runId);
-    } catch {
-      /* noop */
-    }
-  });
+function dispatchInternalRun(origin: string, payload: {
+  source_name: SourceName;
+  run_id: string;
+  since?: string;
+  full_history?: boolean;
+}) {
+  const token = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!token) return;
+  // Fire and forget: do NOT await. The fetch is dispatched immediately.
+  void fetch(`${origin}/api/internal/run-sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...payload, token }),
+  }).catch(() => {});
 }
 
 export const Route = createFileRoute('/api/integrations/sync')({
@@ -44,6 +42,8 @@ export const Route = createFileRoute('/api/integrations/sync')({
         const parsed = Body.safeParse(body);
         if (!parsed.success) return jsonResponse({ error: 'Invalid body' }, { status: 400 });
 
+        const origin = new URL(request.url).origin;
+
         try {
           const sources: SourceName[] = parsed.data.source_name
             ? [parsed.data.source_name]
@@ -54,7 +54,6 @@ export const Route = createFileRoute('/api/integrations/sync')({
                   .eq('is_enabled', true)
               ).data ?? []).map((r) => r.source_name as SourceName);
 
-          // Validate sources are configured before queuing
           const queued: Array<{ source: SourceName; runId: string }> = [];
           for (const src of sources) {
             const row = await getIntegration(src);
@@ -68,8 +67,9 @@ export const Route = createFileRoute('/api/integrations/sync')({
             queued.push({ source: src, runId });
           }
 
-          // Kick off after the response: each call is unawaited.
-          for (const q of queued) startBackgroundSync(q.source, q.runId);
+          for (const q of queued) {
+            dispatchInternalRun(origin, { source_name: q.source, run_id: q.runId });
+          }
 
           return jsonResponse({
             ok: true,

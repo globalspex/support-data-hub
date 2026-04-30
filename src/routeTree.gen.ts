@@ -38,6 +38,7 @@ import { Route as ApiReportsTrendsRouteImport } from './routes/api/reports.trend
 import { Route as ApiReportsSummaryRouteImport } from './routes/api/reports.summary'
 import { Route as ApiReportsByTeamMemberRouteImport } from './routes/api/reports.by-team-member'
 import { Route as ApiReportsByCompanyRouteImport } from './routes/api/reports.by-company'
+import { Route as ApiInternalRunSyncRouteImport } from './routes/api/internal.run-sync'
 import { Route as ApiIntegrationsTestRouteImport } from './routes/api/integrations.test'
 import { Route as ApiIntegrationsSyncRouteImport } from './routes/api/integrations.sync'
 import { Route as ApiIntegrationsPurgePreviewRouteImport } from './routes/api/integrations.purge-preview'
@@ -194,6 +195,11 @@ const ApiReportsByCompanyRoute = ApiReportsByCompanyRouteImport.update({
   path: '/api/reports/by-company',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInternalRunSyncRoute = ApiInternalRunSyncRouteImport.update({
+  id: '/api/internal/run-sync',
+  path: '/api/internal/run-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiIntegrationsTestRoute = ApiIntegrationsTestRouteImport.update({
   id: '/test',
   path: '/test',
@@ -280,6 +286,7 @@ export interface FileRoutesByFullPath {
   '/api/integrations/purge-preview': typeof ApiIntegrationsPurgePreviewRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
+  '/api/internal/run-sync': typeof ApiInternalRunSyncRoute
   '/api/reports/by-company': typeof ApiReportsByCompanyRoute
   '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
   '/api/reports/summary': typeof ApiReportsSummaryRoute
@@ -320,6 +327,7 @@ export interface FileRoutesByTo {
   '/api/integrations/purge-preview': typeof ApiIntegrationsPurgePreviewRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
+  '/api/internal/run-sync': typeof ApiInternalRunSyncRoute
   '/api/reports/by-company': typeof ApiReportsByCompanyRoute
   '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
   '/api/reports/summary': typeof ApiReportsSummaryRoute
@@ -362,6 +370,7 @@ export interface FileRoutesById {
   '/api/integrations/purge-preview': typeof ApiIntegrationsPurgePreviewRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
+  '/api/internal/run-sync': typeof ApiInternalRunSyncRoute
   '/api/reports/by-company': typeof ApiReportsByCompanyRoute
   '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
   '/api/reports/summary': typeof ApiReportsSummaryRoute
@@ -405,6 +414,7 @@ export interface FileRouteTypes {
     | '/api/integrations/purge-preview'
     | '/api/integrations/sync'
     | '/api/integrations/test'
+    | '/api/internal/run-sync'
     | '/api/reports/by-company'
     | '/api/reports/by-team-member'
     | '/api/reports/summary'
@@ -445,6 +455,7 @@ export interface FileRouteTypes {
     | '/api/integrations/purge-preview'
     | '/api/integrations/sync'
     | '/api/integrations/test'
+    | '/api/internal/run-sync'
     | '/api/reports/by-company'
     | '/api/reports/by-team-member'
     | '/api/reports/summary'
@@ -486,6 +497,7 @@ export interface FileRouteTypes {
     | '/api/integrations/purge-preview'
     | '/api/integrations/sync'
     | '/api/integrations/test'
+    | '/api/internal/run-sync'
     | '/api/reports/by-company'
     | '/api/reports/by-team-member'
     | '/api/reports/summary'
@@ -509,6 +521,7 @@ export interface RootRouteChildren {
   ApiTagRulesRoute: typeof ApiTagRulesRouteWithChildren
   ApiTeamMembersRoute: typeof ApiTeamMembersRouteWithChildren
   ApiTicketsRoute: typeof ApiTicketsRouteWithChildren
+  ApiInternalRunSyncRoute: typeof ApiInternalRunSyncRoute
   ApiReportsByCompanyRoute: typeof ApiReportsByCompanyRoute
   ApiReportsByTeamMemberRoute: typeof ApiReportsByTeamMemberRoute
   ApiReportsSummaryRoute: typeof ApiReportsSummaryRoute
@@ -720,6 +733,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiReportsByCompanyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/internal/run-sync': {
+      id: '/api/internal/run-sync'
+      path: '/api/internal/run-sync'
+      fullPath: '/api/internal/run-sync'
+      preLoaderRoute: typeof ApiInternalRunSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/integrations/test': {
       id: '/api/integrations/test'
       path: '/test'
@@ -929,6 +949,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTagRulesRoute: ApiTagRulesRouteWithChildren,
   ApiTeamMembersRoute: ApiTeamMembersRouteWithChildren,
   ApiTicketsRoute: ApiTicketsRouteWithChildren,
+  ApiInternalRunSyncRoute: ApiInternalRunSyncRoute,
   ApiReportsByCompanyRoute: ApiReportsByCompanyRoute,
   ApiReportsByTeamMemberRoute: ApiReportsByTeamMemberRoute,
   ApiReportsSummaryRoute: ApiReportsSummaryRoute,
