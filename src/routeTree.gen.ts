@@ -39,6 +39,7 @@ import { Route as ApiReportsByTeamMemberRouteImport } from './routes/api/reports
 import { Route as ApiReportsByCompanyRouteImport } from './routes/api/reports.by-company'
 import { Route as ApiIntegrationsTestRouteImport } from './routes/api/integrations.test'
 import { Route as ApiIntegrationsSyncRouteImport } from './routes/api/integrations.sync'
+import { Route as ApiCompaniesImportRouteImport } from './routes/api/companies.import'
 import { Route as ApiCompaniesIdRouteImport } from './routes/api/companies.$id'
 import { Route as ApiAssignedMappingsIdRouteImport } from './routes/api/assigned-mappings.$id'
 
@@ -192,6 +193,11 @@ const ApiIntegrationsSyncRoute = ApiIntegrationsSyncRouteImport.update({
   path: '/sync',
   getParentRoute: () => ApiIntegrationsRoute,
 } as any)
+const ApiCompaniesImportRoute = ApiCompaniesImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => ApiCompaniesRoute,
+} as any)
 const ApiCompaniesIdRoute = ApiCompaniesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
+  '/api/companies/import': typeof ApiCompaniesImportRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
   '/api/reports/by-company': typeof ApiReportsByCompanyRoute
@@ -260,6 +267,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
+  '/api/companies/import': typeof ApiCompaniesImportRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
   '/api/reports/by-company': typeof ApiReportsByCompanyRoute
@@ -295,6 +303,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
+  '/api/companies/import': typeof ApiCompaniesImportRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
   '/api/reports/by-company': typeof ApiReportsByCompanyRoute
@@ -331,6 +340,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/assigned-mappings/$id'
     | '/api/companies/$id'
+    | '/api/companies/import'
     | '/api/integrations/sync'
     | '/api/integrations/test'
     | '/api/reports/by-company'
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/api/assigned-mappings/$id'
     | '/api/companies/$id'
+    | '/api/companies/import'
     | '/api/integrations/sync'
     | '/api/integrations/test'
     | '/api/reports/by-company'
@@ -398,6 +409,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/assigned-mappings/$id'
     | '/api/companies/$id'
+    | '/api/companies/import'
     | '/api/integrations/sync'
     | '/api/integrations/test'
     | '/api/reports/by-company'
@@ -640,6 +652,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIntegrationsSyncRouteImport
       parentRoute: typeof ApiIntegrationsRoute
     }
+    '/api/companies/import': {
+      id: '/api/companies/import'
+      path: '/import'
+      fullPath: '/api/companies/import'
+      preLoaderRoute: typeof ApiCompaniesImportRouteImport
+      parentRoute: typeof ApiCompaniesRoute
+    }
     '/api/companies/$id': {
       id: '/api/companies/$id'
       path: '/$id'
@@ -696,10 +715,12 @@ const ApiAssignedMappingsRouteWithChildren =
 
 interface ApiCompaniesRouteChildren {
   ApiCompaniesIdRoute: typeof ApiCompaniesIdRoute
+  ApiCompaniesImportRoute: typeof ApiCompaniesImportRoute
 }
 
 const ApiCompaniesRouteChildren: ApiCompaniesRouteChildren = {
   ApiCompaniesIdRoute: ApiCompaniesIdRoute,
+  ApiCompaniesImportRoute: ApiCompaniesImportRoute,
 }
 
 const ApiCompaniesRouteWithChildren = ApiCompaniesRoute._addFileChildren(
@@ -777,12 +798,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

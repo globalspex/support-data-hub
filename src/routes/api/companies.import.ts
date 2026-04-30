@@ -101,8 +101,10 @@ export const Route = createFileRoute('/api/companies/import')({
         for (const entry of diff) {
           try {
             if (entry.status === 'update' && entry.matchedId) {
-              const patch: Record<string, unknown> = {};
-              for (const [k, v] of Object.entries(entry.changes)) patch[k] = v.to;
+              const patch: { website?: string | null; care_plan_type?: string | null; active_status?: boolean } = {};
+              if ('website' in entry.changes) patch.website = entry.changes.website.to as string | null;
+              if ('care_plan_type' in entry.changes) patch.care_plan_type = entry.changes.care_plan_type.to as string | null;
+              if ('active_status' in entry.changes) patch.active_status = entry.changes.active_status.to as boolean;
               const { error } = await supabaseAdmin.from('companies').update(patch).eq('id', entry.matchedId);
               if (error) throw new Error(error.message);
               updated++;
