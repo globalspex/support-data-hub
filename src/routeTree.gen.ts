@@ -41,7 +41,6 @@ import { Route as ApiIntegrationsTestRouteImport } from './routes/api/integratio
 import { Route as ApiIntegrationsSyncRouteImport } from './routes/api/integrations.sync'
 import { Route as ApiCompaniesIdRouteImport } from './routes/api/companies.$id'
 import { Route as ApiAssignedMappingsIdRouteImport } from './routes/api/assigned-mappings.$id'
-import { Route as ApiAirtableSyncRouteImport } from './routes/api/airtable.sync'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -203,11 +202,6 @@ const ApiAssignedMappingsIdRoute = ApiAssignedMappingsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiAssignedMappingsRoute,
 } as any)
-const ApiAirtableSyncRoute = ApiAirtableSyncRouteImport.update({
-  id: '/api/airtable/sync',
-  path: '/api/airtable/sync',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -231,7 +225,6 @@ export interface FileRoutesByFullPath {
   '/api/team-members': typeof ApiTeamMembersRouteWithChildren
   '/api/tickets': typeof ApiTicketsRouteWithChildren
   '/admin/': typeof AdminIndexRoute
-  '/api/airtable/sync': typeof ApiAirtableSyncRoute
   '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
@@ -265,7 +258,6 @@ export interface FileRoutesByTo {
   '/api/team-members': typeof ApiTeamMembersRouteWithChildren
   '/api/tickets': typeof ApiTicketsRouteWithChildren
   '/admin': typeof AdminIndexRoute
-  '/api/airtable/sync': typeof ApiAirtableSyncRoute
   '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
@@ -301,7 +293,6 @@ export interface FileRoutesById {
   '/api/team-members': typeof ApiTeamMembersRouteWithChildren
   '/api/tickets': typeof ApiTicketsRouteWithChildren
   '/admin/': typeof AdminIndexRoute
-  '/api/airtable/sync': typeof ApiAirtableSyncRoute
   '/api/assigned-mappings/$id': typeof ApiAssignedMappingsIdRoute
   '/api/companies/$id': typeof ApiCompaniesIdRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
@@ -338,7 +329,6 @@ export interface FileRouteTypes {
     | '/api/team-members'
     | '/api/tickets'
     | '/admin/'
-    | '/api/airtable/sync'
     | '/api/assigned-mappings/$id'
     | '/api/companies/$id'
     | '/api/integrations/sync'
@@ -372,7 +362,6 @@ export interface FileRouteTypes {
     | '/api/team-members'
     | '/api/tickets'
     | '/admin'
-    | '/api/airtable/sync'
     | '/api/assigned-mappings/$id'
     | '/api/companies/$id'
     | '/api/integrations/sync'
@@ -407,7 +396,6 @@ export interface FileRouteTypes {
     | '/api/team-members'
     | '/api/tickets'
     | '/admin/'
-    | '/api/airtable/sync'
     | '/api/assigned-mappings/$id'
     | '/api/companies/$id'
     | '/api/integrations/sync'
@@ -434,7 +422,6 @@ export interface RootRouteChildren {
   ApiTagRulesRoute: typeof ApiTagRulesRouteWithChildren
   ApiTeamMembersRoute: typeof ApiTeamMembersRouteWithChildren
   ApiTicketsRoute: typeof ApiTicketsRouteWithChildren
-  ApiAirtableSyncRoute: typeof ApiAirtableSyncRoute
   ApiReportsByCompanyRoute: typeof ApiReportsByCompanyRoute
   ApiReportsByTeamMemberRoute: typeof ApiReportsByTeamMemberRoute
   ApiReportsSummaryRoute: typeof ApiReportsSummaryRoute
@@ -667,13 +654,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAssignedMappingsIdRouteImport
       parentRoute: typeof ApiAssignedMappingsRoute
     }
-    '/api/airtable/sync': {
-      id: '/api/airtable/sync'
-      path: '/api/airtable/sync'
-      fullPath: '/api/airtable/sync'
-      preLoaderRoute: typeof ApiAirtableSyncRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -789,7 +769,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTagRulesRoute: ApiTagRulesRouteWithChildren,
   ApiTeamMembersRoute: ApiTeamMembersRouteWithChildren,
   ApiTicketsRoute: ApiTicketsRouteWithChildren,
-  ApiAirtableSyncRoute: ApiAirtableSyncRoute,
   ApiReportsByCompanyRoute: ApiReportsByCompanyRoute,
   ApiReportsByTeamMemberRoute: ApiReportsByTeamMemberRoute,
   ApiReportsSummaryRoute: ApiReportsSummaryRoute,
