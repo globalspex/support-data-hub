@@ -107,7 +107,36 @@ function TicketsPage() {
         </div>
         <div><Label>Company</Label><Input value={filters.company_name} onChange={(e) => setF('company_name', e.target.value)} /></div>
         <div><Label>Assigned</Label><Input value={filters.assigned_name_raw} onChange={(e) => setF('assigned_name_raw', e.target.value)} /></div>
-        <div><Label>Status</Label><Input value={filters.status} onChange={(e) => setF('status', e.target.value)} /></div>
+        <div>
+          <Label>Status</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full h-9 justify-between font-normal">
+                <span className="truncate">
+                  {filters.status.length === 0 ? 'All' : filters.status.join(', ')}
+                </span>
+                {filters.status.length > 0 ? (
+                  <X
+                    className="h-4 w-4 opacity-60 hover:opacity-100"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setF('status', []); }}
+                  />
+                ) : (
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="start">
+              <div className="space-y-1">
+                {STATUS_OPTIONS.map((s) => (
+                  <label key={s} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                    <Checkbox checked={filters.status.includes(s)} onCheckedChange={() => toggleStatus(s)} />
+                    <span className="capitalize">{s}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
         <div><Label>Type</Label><Input value={filters.type} onChange={(e) => setF('type', e.target.value)} /></div>
         <div><Label>Inbox</Label><Input value={filters.inbox} onChange={(e) => setF('inbox', e.target.value)} /></div>
         <div><Label>Tag</Label><Input value={filters.tag} onChange={(e) => setF('tag', e.target.value)} /></div>
