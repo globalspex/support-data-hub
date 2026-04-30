@@ -235,12 +235,11 @@ function IntegrationCard({ row, onChange }: { row: IntegrationRow; onChange: () 
   const sync = async () => {
     setBusy('sync');
     try {
-      const r = (await apiFetch('/api/integrations/sync', {
+      await apiFetch('/api/integrations/sync', {
         method: 'POST',
         body: JSON.stringify({ source_name: row.source_name }),
-      })) as { ok: boolean; results: Array<{ received?: number; created?: number; updated?: number; errorCount?: number }> };
-      const s = r.results[0];
-      toast.success(`Sync done — received ${s?.received ?? 0}, created ${s?.created ?? 0}, updated ${s?.updated ?? 0}, errors ${s?.errorCount ?? 0}`);
+      });
+      toast.success('Sync started in the background. Check Sync Runs for progress.');
       onChange();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
