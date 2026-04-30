@@ -1,56 +1,50 @@
 
 
-## Move Customer Data Management Out of Airtable
+## Fix: Time Not Syncing from Teamwork
 
-You want to stop relying on Airtable as the source of truth and manage company data (active status, website, care plan, account type, monthly hours, notes) directly in this app. Here's the plan.
+### Root cause
 
-### What changes for you
+In `src/server/services/ticketNormalizer.ts:81`, Teamwork (Projects) tasks always set `actual_logged_time: null` with a comment saying "populated separately from time_entries in a later phase" — that phase was never built. Confirmed in DB: 0 of 9709 tickets have any logged time.
 
-- The Companies page becomes the single place to add, edit, deactivate, and delete companies.
-- Teamwork still flows in tickets and auto-creates company shells when a new `external_company_id` appears (unchanged).
-- Airtable sync, the "Sync Airtable" button, and the Airtable secrets stop being used. We keep the `airtable_record_id` column in the DB (harmless) but remove all UI and server code that reads/writes Airtable.
-- One-time CSV import: I'll add an "Import CSV" button on the Companies page so you can upload your `Customers - Active.csv` once to seed website/care plan/active status, matched by company name (with a preview + conflict report before committing).
+(Teamwork **Desk** tickets correctly read `t.timeSpent` on line 138 — so this is Projects-only.)
 
-### New / changed UI on `/admin/companies`
+### Fix
 
-- Remove: "Sync Airtable" button, Airtable status column, Airtable-related toasts.
-- Add: "New Company" button → dialog with fields (company_name, account_type, website, care_plan_type, monthly_included_hours, active_status, notes).
-- Add: Row actions → Edit (existing), Deactivate/Activate toggle, Delete (with confirm; blocked if tickets reference it — soft-deactivate instead).
-- Add: "Import CSV" button → upload, preview matches/unmatched/conflicts, confirm to apply.
-- Keep: inline edit for the fields already editable today.
+Fetch time entries from Teamwork v3 in bulk during sync, aggregate by `taskId`, and write the totals onto each ticket.
 
-### API changes
+1. **New adapter method** `fetchTimeEntriesByTaskId(cfg)` in `src/server/adapters/teamworkAdapter.ts`:
+   - Calls `GET /projects/api/v3/time.json?page=N&pageSize=500` (paginated)
+   - Sums `minutes + hours*60` per `taskId` → returns `Map<string, number>` of total **minutes** per task ID
+   - Same auth/pagination pattern as `fetchTickets`
 
-- `POST /api/companies` — create company (admin only, Zod-validated).
-- `DELETE /api/companies/$id` — delete if no tickets reference it; otherwise return 409 and suggest deactivate.
-- `PUT /api/companies/$id` — keep, but **remove the `pushCompanyToAirtable` call**.
-- `POST /api/companies/import` — accepts parsed CSV rows `[{ company_name, website, care_plan_type, active_status }]`, returns a dry-run diff; second call with `{ confirm: true }` applies updates. Matches by exact name (case-insensitive, trimmed). Unmatched rows are reported back, not auto-created (you can opt to create them from the preview).
-- Delete: `src/routes/api/airtable.sync.ts`.
+2. **Update `syncService.runSync`** (`src/server/services/syncService.ts`):
+   - For Teamwork only: after `fetchTickets`, call `fetchTimeEntriesByTaskId` and pass the map into the normalize step
+   - Set `normalized.actual_logged_time = (timeMap.get(externalId) ?? 0) / 60` (convert to hours, matching the units the rest of the app already uses for `monthly_included_hours`, etc.)
 
-### Server / service changes
+3. **Normalizer signature**: change `normalizeTeamworkTask(raw, baseUrl, loggedHours)` to accept the lookup result (or a map) and write it into `actual_logged_time`.
 
-- Delete: `src/server/services/airtableService.ts`.
-- Edit `src/routes/api/companies.$id.ts`: drop the Airtable import and the best-effort push block; response becomes `{ ok: true }`.
-- No DB schema changes required. `airtable_record_id` column stays (nullable, ignored). Secrets `AIRTABLE_BASE_ID`, `AIRTABLE_TABLE_NAME`, `Airtable_CustomerManagement` can be deleted from the Secrets panel after the code is removed (I'll remind you).
+4. **Recalc** already runs at the end of `runSync` and reads `actual_logged_time` to compute `final_reportable_time` / `labor_cost` / `billable_value`, so once times populate, all downstream numbers update automatically.
 
-### CSV import details
+### Units sanity check
 
-- Parse client-side with `papaparse` (already a common Vite-friendly lib; will add as dep).
-- Expected headers: `Company`, `Websites`, `Care Plan`, `Active-Inactive` (matches your existing file).
-- Preview table shows: ✅ will update (N), ➕ not in DB / create? (N), ⚠️ conflicts where DB value differs from CSV (N) with per-row checkboxes.
-- Apply step writes only the checked changes; logs a row in `sync_runs` with `source_name = 'csv_import'` for traceability.
+- Teamwork time entries return `hours` (int) + `minutes` (int) per entry → store as **hours decimal** in `actual_logged_time` (e.g., 1h 30m = 1.5).
+- This matches `monthly_included_hours` and existing report aggregation in `reportService.ts`.
 
 ### Files touched
 
-- Edit: `src/routes/admin.companies.tsx`, `src/routes/api/companies.$id.ts`, `src/routes/api/companies.ts`
-- Add: `src/routes/api/companies.import.ts`, `src/routes/api/companies.create.ts` (or fold create into `companies.ts` POST)
-- Delete: `src/routes/api/airtable.sync.ts`, `src/server/services/airtableService.ts`
-- Add dep: `papaparse` + `@types/papaparse`
+- `src/server/adapters/teamworkAdapter.ts` — add `fetchTimeEntriesByTaskId`
+- `src/server/adapters/types.ts` — extend `SourceAdapter` with optional `fetchTimeEntriesByTaskId?`
+- `src/server/services/ticketNormalizer.ts` — accept logged-hours arg
+- `src/server/services/syncService.ts` — fetch + pass times into normalize
+
+After deploy: click **Sync now** on Integrations to backfill. Existing tickets will get their times on the next sync (the upsert by `external_ticket_id` updates in place).
 
 ### Open question
 
-Your existing 70+ companies in the DB came from Teamwork ticket sync and have no website/care plan. Do you want me to:
+If the Teamwork `/time.json` endpoint returns thousands of entries and the sync hits the worker timeout again, do you want me to:
 
-- **(a)** Auto-run the CSV import against your uploaded `Customers - Active.csv` as part of this change (one-shot seed), or
-- **(b)** Just ship the Import button and let you upload it manually when ready?
+- **(a)** Page time entries client-side just like the Airtable fix (browser loops calling sync until done), or
+- **(b)** Just fetch everything server-side and rely on the request finishing in time (simpler, may need batching later)?
+
+Recommended: **(b)** first — time.json is usually fast. We can add pagination if it times out.
 
