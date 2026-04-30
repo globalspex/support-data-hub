@@ -117,7 +117,10 @@ export function normalizeDeskTicket(
     .filter((x): x is string => typeof x === 'string');
 
   const statusObj = t.status as { name?: string } | undefined;
-  const typeObj = t.type as { name?: string } | undefined;
+  const typeRef = t.type as { id?: unknown; name?: string } | undefined;
+  const typeId = typeRef?.id;
+  const typeIncluded = lookupIncluded(included, 'tickettypes', typeId as string | number | undefined);
+  const typeName = typeRef?.name ?? (typeIncluded?.name as string | undefined);
 
   const base = baseUrl.replace(/\/+$/, '');
 
@@ -128,7 +131,7 @@ export function normalizeDeskTicket(
     company_name: s(company?.name ?? company?.companyName),
     ticket_title: s(t.subject),
     status: s(statusObj?.name ?? t.state),
-    type: s(typeObj?.name),
+    type: s(typeName),
     assigned_name_raw: assigneeName,
     assigned_external_id: agentId !== undefined ? String(agentId) : null,
     customer_name: customerName,
