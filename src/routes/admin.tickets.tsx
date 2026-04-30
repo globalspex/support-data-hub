@@ -6,8 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ChevronDown, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
+
+const STATUS_OPTIONS = ['active', 'new', 'completed', 'reopened'];
 
 export const Route = createFileRoute('/admin/tickets')({
   component: TicketsPage,
@@ -38,9 +43,12 @@ interface Ticket {
 interface Member { id: string; name: string; }
 
 function TicketsPage() {
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<{
+    source_system: string; company_name: string; assigned_name_raw: string;
+    status: string[]; type: string; inbox: string; tag: string; date_from: string; date_to: string;
+  }>({
     source_system: '', company_name: '', assigned_name_raw: '',
-    status: '', type: '', inbox: '', tag: '', date_from: '', date_to: '',
+    status: [], type: '', inbox: '', tag: '', date_from: '', date_to: '',
   });
   const [rows, setRows] = useState<Ticket[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -56,7 +64,10 @@ function TicketsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
+      Object.entries(filters).forEach(([k, v]) => {
+        if (Array.isArray(v)) { if (v.length) params.set(k, v.join(',')); }
+        else if (v) params.set(k, v);
+      });
       const [data, mems] = await Promise.all([
         apiFetch(`/api/tickets?${params.toString()}`),
         apiFetch('/api/team-members'),
@@ -72,7 +83,11 @@ function TicketsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const setF = (k: keyof typeof filters, v: string) => setFilters((p) => ({ ...p, [k]: v }));
+  const setF = <K extends keyof typeof filters>(k: K, v: (typeof filters)[K]) => setFilters((p) => ({ ...p, [k]: v }));
+  const toggleStatus = (s: string) => setFilters((p) => ({
+    ...p,
+    status: p.status.includes(s) ? p.status.filter((x) => x !== s) : [...p.status, s],
+  }));
   const num = (n: number | null | undefined, d = 1) => (n === null || n === undefined ? '—' : Number(n).toFixed(d));
   const money = (n: number | null | undefined) => (n === null || n === undefined ? '—' : `$${Number(n).toFixed(0)}`);
 
@@ -92,7 +107,36 @@ function TicketsPage() {
         </div>
         <div><Label>Company</Label><Input value={filters.company_name} onChange={(e) => setF('company_name', e.target.value)} /></div>
         <div><Label>Assigned</Label><Input value={filters.assigned_name_raw} onChange={(e) => setF('assigned_name_raw', e.target.value)} /></div>
-        <div><Label>Status</Label><Input value={filters.status} onChange={(e) => setF('status', e.target.value)} /></div>
+        <div>
+          <Label>Status</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full h-9 justify-between font-normal">
+                <span className="truncate">
+                  {filters.status.length === 0 ? 'All' : filters.status.join(', ')}
+                </span>
+                {filters.status.length > 0 ? (
+                  <X
+                    className="h-4 w-4 opacity-60 hover:opacity-100"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setF('status', []); }}
+                  />
+                ) : (
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="start">
+              <div className="space-y-1">
+                {STATUS_OPTIONS.map((s) => (
+                  <label key={s} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                    <Checkbox checked={filters.status.includes(s)} onCheckedChange={() => toggleStatus(s)} />
+                    <span className="capitalize">{s}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
         <div><Label>Type</Label><Input value={filters.type} onChange={(e) => setF('type', e.target.value)} /></div>
         <div><Label>Inbox</Label><Input value={filters.inbox} onChange={(e) => setF('inbox', e.target.value)} /></div>
         <div><Label>Tag</Label><Input value={filters.tag} onChange={(e) => setF('tag', e.target.value)} /></div>
