@@ -38,14 +38,31 @@ export const Route = createFileRoute('/api/internal/run-sync')({
 
         const { source_name, run_id, since, full_history } = parsed.data;
         try {
+          const sinceDate = since ? new Date(since) : undefined;
           await runSync(
             source_name as SourceName,
             {
-              sinceOverride: since ? new Date(since) : undefined,
+              sinceOverride: sinceDate,
               fullHistory: full_history,
             },
             run_id,
           );
+
+          // If this was a history import (explicit since), bookkeep how far back we've imported.
+          if (sinceDate) {
+            const { data: row } = await supabaseAdmin
+              .from('integration_connections')
+              .select('history_imported_through')
+              .eq('source_name', source_name)
+              .maybeSingle();
+            const existing = row?.history_imported_through ? new Date(row.history_imported_through) : null;
+            const earliest = existing && existing < sinceDate ? existing : sinceDate;
+            await supabaseAdmin
+              .from('integration_connections')
+              .update({ history_imported_through: earliest.toISOString() })
+              .eq('source_name', source_name);
+          }
+
           return jsonResponse({ ok: true });
         } catch (e) {
           const message = e instanceof Error ? e.message : String(e);
