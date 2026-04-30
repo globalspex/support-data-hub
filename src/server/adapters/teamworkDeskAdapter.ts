@@ -4,14 +4,14 @@ import {
   type RawCompany,
   type RawTicket,
   trimBaseUrl,
-} from './types';
+} from "./types";
 
 async function desk(cfg: ConnectionConfig, path: string, attempt = 0): Promise<unknown> {
   const url = `${trimBaseUrl(cfg.baseUrl)}/desk/api/v2${path}`;
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${cfg.token}`,
-      Accept: 'application/json',
+      Accept: "application/json",
     },
   });
   if (res.status === 429 && attempt < 3) {
@@ -19,7 +19,7 @@ async function desk(cfg: ConnectionConfig, path: string, attempt = 0): Promise<u
     return desk(cfg, path, attempt + 1);
   }
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
+    const text = await res.text().catch(() => "");
     throw new Error(`Teamwork Desk ${path} failed [${res.status}]: ${text.slice(0, 300)}`);
   }
   return res.json();
@@ -28,12 +28,12 @@ async function desk(cfg: ConnectionConfig, path: string, attempt = 0): Promise<u
 const iso = (d: Date) => d.toISOString();
 
 export const teamworkDeskAdapter: SourceAdapter = {
-  sourceName: 'teamwork_desk',
+  sourceName: "teamwork_desk",
 
   async testConnection(cfg) {
     try {
-      await desk(cfg, '/me.json');
-      return { ok: true, message: 'Connected to Teamwork Desk' };
+      await desk(cfg, "/me.json");
+      return { ok: true, message: "Connected to Teamwork Desk" };
     } catch (e) {
       return { ok: false, message: e instanceof Error ? e.message : String(e) };
     }
@@ -51,7 +51,7 @@ export const teamworkDeskAdapter: SourceAdapter = {
       for (const c of list) {
         out.push({
           externalId: String(c.id),
-          name: String(c.name ?? c.companyName ?? ''),
+          name: String(c.name ?? c.companyName ?? ""),
           active: true,
           raw: c,
         });
@@ -88,7 +88,7 @@ export const teamworkDeskAdapter: SourceAdapter = {
     let page = 1;
     const since = opts?.since;
     const sinceTime = since ? since.getTime() : 0;
-    const sinceParam = since ? `&updatedAfter=${encodeURIComponent(iso(since))}` : '';
+    const sinceParam = since ? `&updatedAfter=${encodeURIComponent(iso(since))}` : "";
     while (page < 200) {
       const data = (await desk(
         cfg,
