@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 
 const STATUS_OPTIONS = ['active', 'new', 'completed', 'reopened'];
+const TYPE_OPTIONS = ['task', 'problem', 'request', 'marketing', 'question', 'incident'];
 
 export const Route = createFileRoute('/admin/tickets')({
   component: TicketsPage,
@@ -45,10 +46,10 @@ interface Member { id: string; name: string; }
 function TicketsPage() {
   const [filters, setFilters] = useState<{
     source_system: string; company_name: string; assigned_name_raw: string;
-    status: string[]; type: string; inbox: string; tag: string; date_from: string; date_to: string;
+    status: string[]; type: string[]; inbox: string; tag: string; date_from: string; date_to: string;
   }>({
     source_system: '', company_name: '', assigned_name_raw: '',
-    status: [], type: '', inbox: '', tag: '', date_from: '', date_to: '',
+    status: [], type: [], inbox: '', tag: '', date_from: '', date_to: '',
   });
   const [rows, setRows] = useState<Ticket[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -87,6 +88,10 @@ function TicketsPage() {
   const toggleStatus = (s: string) => setFilters((p) => ({
     ...p,
     status: p.status.includes(s) ? p.status.filter((x) => x !== s) : [...p.status, s],
+  }));
+  const toggleType = (s: string) => setFilters((p) => ({
+    ...p,
+    type: p.type.includes(s) ? p.type.filter((x) => x !== s) : [...p.type, s],
   }));
   const num = (n: number | null | undefined, d = 1) => (n === null || n === undefined ? '—' : Number(n).toFixed(d));
   const money = (n: number | null | undefined) => (n === null || n === undefined ? '—' : `$${Number(n).toFixed(0)}`);
@@ -137,7 +142,36 @@ function TicketsPage() {
             </PopoverContent>
           </Popover>
         </div>
-        <div><Label>Type</Label><Input value={filters.type} onChange={(e) => setF('type', e.target.value)} /></div>
+        <div>
+          <Label>Type</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full h-9 justify-between font-normal">
+                <span className="truncate">
+                  {filters.type.length === 0 ? 'All' : filters.type.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(', ')}
+                </span>
+                {filters.type.length > 0 ? (
+                  <X
+                    className="h-4 w-4 opacity-60 hover:opacity-100"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setF('type', []); }}
+                  />
+                ) : (
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="start">
+              <div className="space-y-1">
+                {TYPE_OPTIONS.map((s) => (
+                  <label key={s} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                    <Checkbox checked={filters.type.includes(s)} onCheckedChange={() => toggleType(s)} />
+                    <span className="capitalize">{s}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
         <div><Label>Inbox</Label><Input value={filters.inbox} onChange={(e) => setF('inbox', e.target.value)} /></div>
         <div><Label>Tag</Label><Input value={filters.tag} onChange={(e) => setF('tag', e.target.value)} /></div>
         <div><Label>Date from</Label><Input type="date" value={filters.date_from} onChange={(e) => setF('date_from', e.target.value)} /></div>
