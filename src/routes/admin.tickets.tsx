@@ -64,7 +64,10 @@ function TicketsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
+      Object.entries(filters).forEach(([k, v]) => {
+        if (Array.isArray(v)) { if (v.length) params.set(k, v.join(',')); }
+        else if (v) params.set(k, v);
+      });
       const [data, mems] = await Promise.all([
         apiFetch(`/api/tickets?${params.toString()}`),
         apiFetch('/api/team-members'),
