@@ -122,9 +122,9 @@ export async function runSync(source: SourceName, opts: RunSyncOptions = {}, exi
     const raws = await adapter.fetchTickets(cfg, since ? { since } : undefined);
     received = raws.length;
 
-    // Time entries (windowed) — Teamwork Projects only.
+    // Time entries (windowed) — both Teamwork Projects and Teamwork Desk support time logs.
     let loggedHoursByTaskId: Map<string, number> | undefined;
-    if (source === 'teamwork' && adapter.fetchTimeEntriesByTaskId) {
+    if (adapter.fetchTimeEntriesByTaskId) {
       try {
         loggedHoursByTaskId = await adapter.fetchTimeEntriesByTaskId(cfg, since ? { since } : undefined);
       } catch (e) {
@@ -142,7 +142,7 @@ export async function runSync(source: SourceName, opts: RunSyncOptions = {}, exi
         const normalized: NormalizedTicket =
           source === 'teamwork'
             ? normalizeTeamworkTask(r, cfg.baseUrl, loggedHoursByTaskId)
-            : normalizeDeskTicket(r, cfg.baseUrl);
+            : normalizeDeskTicket(r, cfg.baseUrl, loggedHoursByTaskId);
         normalizedAll.push(normalized);
       } catch (e) {
         errors.push({

@@ -109,25 +109,34 @@ export function normalizeTeamworkTask(
   };
 }
 
-export function normalizeDeskTicket(raw: RawTicket, baseUrl: string): NormalizedTicket {
+export function normalizeDeskTicket(
+  raw: RawTicket,
+  baseUrl: string,
+  loggedHoursByTicketId?: Map<string, number>,
+): NormalizedTicket {
   const t = raw.raw as Record<string, unknown>;
   const included = t._included as
     | Record<string, Record<string, Record<string, unknown>>>
     | undefined;
 
-  const customerId = (t.customerId ?? (t.customer as { id?: unknown })?.id) as
+  // Customer can be embedded or a {id,type:"customers"} reference.
+  const customerRef = t.customer as { id?: unknown; firstName?: unknown; lastName?: unknown } | undefined;
+  const customerId = (t.customerId ?? customerRef?.id) as string | number | undefined;
+  const customerFromInc = lookupIncluded(included, "customers", customerId);
+  const customer = customerFromInc ?? (customerRef as Record<string, unknown> | undefined);
+  const companyId = (customer?.companyId ?? (t.company as { id?: unknown })?.id) as
     | string
     | number
     | undefined;
-  const customer = lookupIncluded(included, "customers", customerId);
-  const companyId = customer?.companyId as string | number | undefined;
   const company = lookupIncluded(included, "companies", companyId);
 
-  const inboxId = (t.inboxId ?? (t.inbox as { id?: unknown })?.id) as string | number | undefined;
-  const inbox = lookupIncluded(included, "inboxes", inboxId);
+  const inboxRef = t.inbox as { id?: unknown; name?: unknown } | undefined;
+  const inboxId = (t.inboxId ?? inboxRef?.id) as string | number | undefined;
+  const inbox = lookupIncluded(included, "inboxes", inboxId) ?? (inboxRef as Record<string, unknown> | undefined);
 
-  const agentId = (t.agentId ?? (t.agent as { id?: unknown })?.id) as string | number | undefined;
-  const agent = lookupIncluded(included, "users", agentId);
+  const agentRef = t.agent as { id?: unknown; firstName?: unknown; lastName?: unknown } | undefined;
+  const agentId = (t.agentId ?? agentRef?.id) as string | number | undefined;
+  const agent = lookupIncluded(included, "users", agentId) ?? (agentRef as Record<string, unknown> | undefined);
   const assigneeName = agent
     ? `${agent.firstName ?? ""} ${agent.lastName ?? ""}`.trim() || null
     : null;
@@ -136,12 +145,29 @@ export function normalizeDeskTicket(raw: RawTicket, baseUrl: string): Normalized
     ? `${customer.firstName ?? ""} ${customer.lastName ?? ""}`.trim() || null
     : null;
 
-  const tagsField = t.tags as Array<{ name?: string } | string> | undefined;
+  // Tags: in Desk v2 these are typically references {id,type:"tags"}. Resolve via _included.
+  const tagsField = t.tags as Array<{ id?: unknown; name?: unknown } | string> | undefined;
   const tags = (tagsField ?? [])
-    .map((tag) => (typeof tag === "string" ? tag : tag.name))
-    .filter((x): x is string => typeof x === "string");
+    .map((tag) => {
+      if (typeof tag === "string") return tag;
+      if (typeof tag.name === "string") return tag.name;
+      const resolved = lookupIncluded(included, "tags", tag.id as string | number | undefined);
+      return typeof resolved?.name === "string" ? (resolved.name as string) : undefined;
+    })
+    .filter((x): x is string => typeof x === "string" && x.length > 0);
 
-  const statusObj = t.status as { name?: string } | undefined;
+  // Status is usually a {id,type:"ticketstatuses"} reference. Resolve via _included.
+  const statusRef = t.status as { id?: unknown; name?: unknown } | undefined;
+  const statusFromInc = lookupIncluded(
+    included,
+    "ticketstatuses",
+    statusRef?.id as string | number | undefined,
+  );
+  const statusName =
+    (typeof statusRef?.name === "string" ? (statusRef.name as string) : undefined) ??
+    (statusFromInc?.name as string | undefined) ??
+    (t.state as string | undefined);
+
   const typeRef = t.type as { id?: unknown; name?: string } | undefined;
   const typeId = typeRef?.id;
   const typeMap = t._ticketTypesById as Record<string, Record<string, unknown>> | undefined;
@@ -165,7 +191,7 @@ export function normalizeDeskTicket(raw: RawTicket, baseUrl: string): Normalized
     external_company_id: companyId !== undefined ? String(companyId) : null,
     company_name: s(company?.name ?? company?.companyName),
     ticket_title: s(t.subject),
-    status: s(statusObj?.name ?? t.state),
+    status: s(statusName),
     type: normalizeDeskType(s(typeName)),
     assigned_name_raw: assigneeName,
     assigned_external_id: agentId !== undefined ? String(agentId) : null,
@@ -176,7 +202,9 @@ export function normalizeDeskTicket(raw: RawTicket, baseUrl: string): Normalized
     created_at_source: s(t.createdAt),
     updated_at_source: s(t.updatedAt),
     closed_at_source: s(t.resolvedAt ?? t.closedAt),
-    actual_logged_time: typeof t.timeSpent === "number" ? (t.timeSpent as number) : null,
+    actual_logged_time:
+      loggedHoursByTicketId?.get(raw.externalId) ??
+      (typeof t.timeSpent === "number" ? (t.timeSpent as number) : null),
     raw_payload: t,
   };
 }
