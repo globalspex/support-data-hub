@@ -183,21 +183,23 @@ export const teamworkDeskAdapter: SourceAdapter = {
   },
 
   /**
-   * Sum logged hours per ticket from /timelogs.json. Returns Map<ticketId, hours>.
-   * Teamwork Desk timelogs return `time` (typically minutes) on each entry. We
-   * convert to hours.
+   * Sum logged seconds per ticket from /timelogs.json. Returns Map<ticketId, hours>.
+   * Teamwork Desk timelogs return `seconds` per entry. We page newest-first
+   * (orderBy=date desc) and stop once we cross the `since` window — server-side
+   * date filtering on this endpoint is not honored, so client-side cutoff it is.
    */
   async fetchTimeEntriesByTaskId(cfg, opts) {
     const totals = new Map<string, number>();
     const since = opts?.since;
-    const sinceParam = since ? `&updatedAfter=${encodeURIComponent(iso(since))}` : "";
+    const sinceTime = since ? since.getTime() : 0;
     let page = 1;
-    while (page < 1000) {
+    let stop = false;
+    while (page < 2000 && !stop) {
       let data: Record<string, unknown>;
       try {
         data = (await desk(
           cfg,
-          `/timelogs.json?page=${page}&pageSize=100${sinceParam}`,
+          `/timelogs.json?page=${page}&pageSize=100&orderBy=date&orderMode=desc`,
         )) as Record<string, unknown>;
       } catch {
         break;
@@ -208,16 +210,26 @@ export const teamworkDeskAdapter: SourceAdapter = {
         [];
       if (list.length === 0) break;
       for (const tl of list) {
+        if (since) {
+          const d = (tl.date ?? tl.updatedAt ?? tl.createdAt) as string | undefined;
+          if (d) {
+            const ts = Date.parse(d);
+            if (Number.isFinite(ts) && ts < sinceTime) {
+              stop = true;
+              continue;
+            }
+          }
+        }
         const ticketRef = tl.ticket as { id?: unknown } | undefined;
         const ticketId = (tl.ticketId ?? ticketRef?.id) as string | number | undefined;
         if (ticketId === undefined || ticketId === null) continue;
-        // Possible field names for duration. Prefer minutes if present.
-        const minutes =
-          (typeof tl.minutes === "number" ? (tl.minutes as number) : undefined) ??
-          (typeof tl.time === "number" ? (tl.time as number) : undefined) ??
+        const seconds =
+          (typeof tl.seconds === "number" ? (tl.seconds as number) : undefined) ??
+          (typeof tl.time === "number" ? (tl.time as number) * 60 : undefined) ??
+          (typeof tl.minutes === "number" ? (tl.minutes as number) * 60 : undefined) ??
           (typeof tl.timeSpent === "number" ? (tl.timeSpent as number) : undefined);
-        if (minutes === undefined || !Number.isFinite(minutes)) continue;
-        const hours = minutes / 60;
+        if (seconds === undefined || !Number.isFinite(seconds)) continue;
+        const hours = seconds / 3600;
         const key = String(ticketId);
         totals.set(key, (totals.get(key) ?? 0) + hours);
       }
@@ -227,3 +239,4 @@ export const teamworkDeskAdapter: SourceAdapter = {
     return totals;
   },
 };
+
