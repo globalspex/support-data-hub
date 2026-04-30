@@ -112,6 +112,7 @@ export type Database = {
           auth_type: string | null
           base_url: string | null
           created_at: string
+          history_imported_through: string | null
           id: string
           is_enabled: boolean
           last_sync_at: string | null
@@ -119,6 +120,7 @@ export type Database = {
           notes: string | null
           source_name: string
           status: string | null
+          sync_window_days: number
           updated_at: string
         }
         Insert: {
@@ -126,6 +128,7 @@ export type Database = {
           auth_type?: string | null
           base_url?: string | null
           created_at?: string
+          history_imported_through?: string | null
           id?: string
           is_enabled?: boolean
           last_sync_at?: string | null
@@ -133,6 +136,7 @@ export type Database = {
           notes?: string | null
           source_name: string
           status?: string | null
+          sync_window_days?: number
           updated_at?: string
         }
         Update: {
@@ -140,6 +144,7 @@ export type Database = {
           auth_type?: string | null
           base_url?: string | null
           created_at?: string
+          history_imported_through?: string | null
           id?: string
           is_enabled?: boolean
           last_sync_at?: string | null
@@ -147,6 +152,7 @@ export type Database = {
           notes?: string | null
           source_name?: string
           status?: string | null
+          sync_window_days?: number
           updated_at?: string
         }
         Relationships: []

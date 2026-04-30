@@ -43,7 +43,14 @@ export async function testIntegration(source: SourceName) {
   return result;
 }
 
-export async function runSync(source: SourceName) {
+export interface RunSyncOptions {
+  /** Override the integration's configured window (used by history import). Date = include tickets updated >= this. */
+  sinceOverride?: Date;
+  /** If true, fetch everything (no window). */
+  fullHistory?: boolean;
+}
+
+export async function runSync(source: SourceName, opts: RunSyncOptions = {}) {
   const row = await getIntegration(source);
   if (!row || !row.is_enabled || !row.base_url || !row.api_key_or_token) {
     throw new Error(`Integration "${source}" is not configured/enabled.`);
@@ -56,6 +63,20 @@ export async function runSync(source: SourceName) {
   };
   const adapter = ADAPTERS[source];
 
+  // Determine sync window
+  let since: Date | undefined;
+  if (opts.fullHistory) {
+    since = undefined;
+  } else if (opts.sinceOverride) {
+    since = opts.sinceOverride;
+  } else {
+    const days = Number(row.sync_window_days ?? 90);
+    if (Number.isFinite(days) && days > 0) {
+      since = new Date(Date.now() - days * 86400000);
+    }
+  }
+  const windowMessage = since ? `since=${since.toISOString()}` : 'since=ALL';
+
   const { data: runRow, error: runErr } = await supabaseAdmin
     .from('sync_runs')
     .insert({ source_name: source, sync_type: 'manual', status: 'running' })
@@ -64,9 +85,11 @@ export async function runSync(source: SourceName) {
   if (runErr || !runRow) throw new Error(runErr?.message ?? 'Failed to create sync run');
 
   const errors: Array<{ stage: string; message: string }> = [];
+  const info: Array<{ stage: string; message: string }> = [{ stage: 'window', message: windowMessage }];
   let received = 0;
   let created = 0;
   let updated = 0;
+  const touchedTicketIds: string[] = [];
 
   try {
     // Companies
@@ -89,15 +112,15 @@ export async function runSync(source: SourceName) {
       errors.push({ stage: 'companies', message: e instanceof Error ? e.message : String(e) });
     }
 
-    // Tickets
-    const raws = await adapter.fetchTickets(cfg);
+    // Tickets (windowed)
+    const raws = await adapter.fetchTickets(cfg, since ? { since } : undefined);
     received = raws.length;
 
-    // Fetch logged-time totals (Teamwork Projects only — Desk includes timeSpent inline).
+    // Time entries (windowed) — Teamwork Projects only.
     let loggedHoursByTaskId: Map<string, number> | undefined;
     if (source === 'teamwork' && adapter.fetchTimeEntriesByTaskId) {
       try {
-        loggedHoursByTaskId = await adapter.fetchTimeEntriesByTaskId(cfg);
+        loggedHoursByTaskId = await adapter.fetchTimeEntriesByTaskId(cfg, since ? { since } : undefined);
       } catch (e) {
         errors.push({
           stage: 'time_entries',
@@ -120,11 +143,13 @@ export async function runSync(source: SourceName) {
           .eq('external_ticket_id', normalized.external_ticket_id)
           .maybeSingle();
 
-        const { error: upErr } = await supabaseAdmin
+        const { data: upserted, error: upErr } = await supabaseAdmin
           .from('tickets')
-          .upsert([normalized as never], { onConflict: 'source_system,external_ticket_id' });
+          .upsert([normalized as never], { onConflict: 'source_system,external_ticket_id' })
+          .select('id');
         if (upErr) throw new Error(upErr.message);
 
+        if (upserted && upserted[0]?.id) touchedTicketIds.push(upserted[0].id);
         if (existing) updated++;
         else created++;
       } catch (e) {
@@ -145,7 +170,7 @@ export async function runSync(source: SourceName) {
         records_created: created,
         records_updated: updated,
         error_count: errors.length,
-        error_details: errors.length ? errors.slice(0, 50) : null,
+        error_details: [...errors, ...info].slice(0, 50),
       })
       .eq('id', runRow.id);
 
@@ -154,33 +179,34 @@ export async function runSync(source: SourceName) {
       .update({ last_sync_at: new Date().toISOString(), status: status === 'error' ? 'error' : 'ok' })
       .eq('source_name', source);
 
-    // Auto-map raw assignees to team members by exact name match (best-effort).
+    // Auto-map best-effort
     try {
       const am = await autoMapAssignees(source);
-      const infoEntry = { stage: 'auto_map', message: `created=${am.created} ambiguous=${am.ambiguous} noMatch=${am.noMatch}` };
-      const merged = [...errors, infoEntry].slice(0, 50);
+      info.push({ stage: 'auto_map', message: `created=${am.created} ambiguous=${am.ambiguous} noMatch=${am.noMatch}` });
       await supabaseAdmin
         .from('sync_runs')
-        .update({ error_details: merged })
+        .update({ error_details: [...errors, ...info].slice(0, 50) })
         .eq('id', runRow.id);
     } catch (amErr) {
       errors.push({ stage: 'auto_map', message: amErr instanceof Error ? amErr.message : String(amErr) });
       await supabaseAdmin
         .from('sync_runs')
-        .update({ error_count: errors.length, error_details: errors.slice(0, 50) })
+        .update({ error_count: errors.length, error_details: [...errors, ...info].slice(0, 50) })
         .eq('id', runRow.id);
     }
 
-    // Run scoped recalc after the sync so calculated fields are fresh
+    // Narrow recalc to tickets touched in this run.
     try {
-      await recalculate({ kind: 'source', source });
+      if (touchedTicketIds.length > 0) {
+        await recalculate({ kind: 'ticket_ids', ids: touchedTicketIds });
+      }
     } catch (recalcErr) {
       const msg = recalcErr instanceof Error ? recalcErr.message : String(recalcErr);
       await supabaseAdmin
         .from('sync_runs')
         .update({
           error_count: errors.length + 1,
-          error_details: [...errors, { stage: 'recalc', message: msg }].slice(0, 50),
+          error_details: [...errors, { stage: 'recalc', message: msg }, ...info].slice(0, 50),
         })
         .eq('id', runRow.id);
     }
@@ -197,7 +223,7 @@ export async function runSync(source: SourceName) {
         records_created: created,
         records_updated: updated,
         error_count: errors.length + 1,
-        error_details: [...errors, { stage: 'fatal', message }].slice(0, 50),
+        error_details: [...errors, { stage: 'fatal', message }, ...info].slice(0, 50),
       })
       .eq('id', runRow.id);
     throw e;

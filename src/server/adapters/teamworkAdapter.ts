@@ -7,7 +7,7 @@ import {
   trimBaseUrl,
 } from './types';
 
-async function tw(cfg: ConnectionConfig, path: string): Promise<unknown> {
+async function tw(cfg: ConnectionConfig, path: string, attempt = 0): Promise<unknown> {
   const url = `${trimBaseUrl(cfg.baseUrl)}${path}`;
   const res = await fetch(url, {
     headers: {
@@ -15,12 +15,23 @@ async function tw(cfg: ConnectionConfig, path: string): Promise<unknown> {
       Accept: 'application/json',
     },
   });
+  if (res.status === 429 && attempt < 3) {
+    await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+    return tw(cfg, path, attempt + 1);
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Teamwork ${path} failed [${res.status}]: ${text.slice(0, 300)}`);
   }
   return res.json();
 }
+
+const iso = (d: Date) => d.toISOString();
+
+const ticketUpdatedAt = (t: Record<string, unknown>): string | null => {
+  const u = (t.updatedAt ?? t.lastChangedOn ?? t.dateUpdated ?? null) as string | null;
+  return u;
+};
 
 export const teamworkAdapter: SourceAdapter = {
   sourceName: 'teamwork',
@@ -57,45 +68,58 @@ export const teamworkAdapter: SourceAdapter = {
     return out;
   },
 
-  async fetchTickets(cfg) {
-    // Teamwork v3 tasks endpoint with tags + assignees included
+  async fetchTickets(cfg, opts) {
     const out: RawTicket[] = [];
     let page = 1;
+    const since = opts?.since;
+    const sinceTime = since ? since.getTime() : 0;
+    const sinceParam = since ? `&updatedAfter=${encodeURIComponent(iso(since))}&orderBy=updatedAt&orderMode=desc` : '';
     while (page < 100) {
       const data = (await tw(
         cfg,
-        `/projects/api/v3/tasks.json?page=${page}&pageSize=250&include=tags,users,projects,companies&includeCompletedTasks=true`,
+        `/projects/api/v3/tasks.json?page=${page}&pageSize=250&include=tags,users,projects,companies&includeCompletedTasks=true${sinceParam}`,
       )) as {
         tasks?: Array<Record<string, unknown>>;
         included?: Record<string, Record<string, Record<string, unknown>>>;
       };
       const list = data.tasks ?? [];
       if (list.length === 0) break;
+      let stopAfterPage = false;
       for (const t of list) {
+        if (since) {
+          const u = ticketUpdatedAt(t);
+          if (u) {
+            const ts = Date.parse(u);
+            if (Number.isFinite(ts) && ts < sinceTime) {
+              stopAfterPage = true;
+              continue;
+            }
+          }
+        }
         out.push({
           externalId: String(t.id),
           raw: { ...t, _included: data.included ?? {} },
         });
       }
+      if (stopAfterPage) break;
       if (list.length < 250) break;
       page++;
     }
     return out;
   },
 
-  async fetchTimeEntriesByTaskId(cfg) {
-    // Teamwork v3 time entries — sum hours+minutes per task.
-    // Dedupe by time-entry id across pages: Teamwork pagination can return the
-    // same entry twice if records are added/edited mid-fetch, which would
-    // otherwise inflate per-task totals.
+  async fetchTimeEntriesByTaskId(cfg, opts) {
+    // Sum hours+minutes per task. Dedupe by entry id across pages.
     const totals = new Map<string, number>();
     const seenEntryIds = new Set<string>();
     let duplicateCount = 0;
     let page = 1;
+    const since = opts?.since;
+    const sinceParam = since ? `&updatedAfter=${encodeURIComponent(iso(since))}` : '';
     while (page < 500) {
       const data = (await tw(
         cfg,
-        `/projects/api/v3/time.json?page=${page}&pageSize=500`,
+        `/projects/api/v3/time.json?page=${page}&pageSize=500${sinceParam}`,
       )) as {
         timelogs?: Array<Record<string, unknown>>;
         timeEntries?: Array<Record<string, unknown>>;
