@@ -1,62 +1,83 @@
-## Auto-map + Bulk-map assignees
+## Sliding 90-day sync window + history import + purge
 
-Goal: stop hand-mapping every raw assignee. Auto-create mappings whenever a sync sees a raw name that exactly matches an active team member, and give you one screen to bulk-map the rest.
+Goal: routine syncs only fetch the last N days of tickets/time so they finish fast and don't time out. History is opt-in. You can purge old rows when you want.
 
 ### What changes for you
 
-**On the Mappings page (`/admin/mappings`):**
-- New top bar with two buttons:
-  - **Auto-map by name** — scans all unmapped raw assignees, links any whose name matches an active team member (case/whitespace-insensitive). Shows a toast: "Mapped 12, 3 had no match."
-  - **Save bulk mappings** — appears only when you've picked team members in the bulk panel below.
-- The "Unmapped assignees" table gets a "Map to" dropdown per row that *stages* the choice instead of saving immediately. You pick for several rows, then click **Save bulk mappings** once. Recalculation runs once at the end (faster than per-row).
-- A small note explains: "Auto-map runs automatically on every sync. Use this button to re-run it now."
+**Integrations page (`/admin/integrations`)** — each source card gets:
+- **Sync window (days)** input, defaults to **90**. Used by every routine sync.
+- **Import history** button — opens a small dialog with a "From date" picker. Runs a one-shot sync that ignores the window and pulls everything updated since that date for that source only.
+- **Purge old tickets** button — opens a confirm dialog showing how many rows would be deleted (tickets older than the chosen cutoff for that source). Asks you to type "PURGE" before it runs.
 
-**On every sync:**
-- After tickets are pulled, before recalculation, the system auto-creates mappings for any raw assignees whose name matches an active team member. You'll see the count in the sync run summary (e.g. "Auto-mapped 4 new assignees").
+**Routine "Run sync" behavior**
+- Computes `since = now - sync_window_days`.
+- Pulls only tickets/time entries `updatedAfter` that date.
+- Companies still sync in full (small list).
+- Recalc only re-runs over tickets touched in this run, not the whole table.
+
+**Sync Runs page** — already lists per-run `received/created/updated`. Each run row will also show the window used (e.g. "since 2026-01-30") in the error_details info entry, so you can audit.
 
 ### What stays the same
 
-- Existing mappings are never overwritten. Auto-map only fills gaps.
-- Manual one-row dropdowns on the Mapped table still work (to fix or clear a mapping).
-- Money columns (Labor / Billable) still come from the mapped team member's rates.
+- Existing 9,000+ tickets in the DB are kept. The window only controls fetching.
+- Reports show everything in the DB regardless of window.
+- Auto-map and recalc still run after each sync.
 
-### Matching rules
+### Database
 
-- Compare `assigned_name_raw` (lowercased, trimmed, collapsed whitespace) to `team_members.name` (same normalization), only `active_status = true` members.
-- If exactly one team member matches → create mapping.
-- If zero or 2+ match → skip (left for you to resolve in the bulk panel).
-- Mapping is keyed by `source_name` + `raw_assigned_id` when available, otherwise by `raw_assigned_name`.
+One migration (schema only):
+```
+ALTER TABLE integration_connections
+  ADD COLUMN sync_window_days INTEGER NOT NULL DEFAULT 90,
+  ADD COLUMN history_imported_through TIMESTAMPTZ NULL;
+```
+
+`history_imported_through` records the earliest date that's been backfilled, so the UI can tell you "history imported back to 2024-01-15".
 
 ### Technical changes
 
-**New service: `src/server/services/autoMapService.ts`**
-- `autoMapAssignees(source?: SourceName)` — loads active `team_members`, loads existing `assigned_name_mappings`, queries distinct unmapped raw assignees from `tickets` (filtered by source if provided), inserts mappings for unique name matches. Returns `{ created, ambiguous, noMatch }`.
+**Adapters** (`src/server/adapters/`)
+- `SourceAdapter.fetchTickets(cfg, opts?: { since?: Date })` — already in the interface, now actually used.
+- `teamworkAdapter.fetchTickets`: append `&updatedAfter=<ISO>&orderBy=updatedAt&orderMode=desc` to the v3 tasks URL when `since` is set. Stop paging once the last item's `updatedAt < since` (defense in depth in case the API ignores the filter).
+- `teamworkAdapter.fetchTimeEntriesByTaskId(cfg, opts?: { since?: Date })`: add `&updatedAfter=<ISO>` (or `fromdate=` if v3 requires it — I'll verify against the response shape during implementation and fall back to client-side filtering if needed).
+- `teamworkDeskAdapter.fetchTickets`: append `&updatedAfter=<ISO>` to `/tickets.json`. Drop the `messages` include — heavy and unused. Same early-stop.
+- Both adapters: simple 429 backoff (wait 2s, retry up to 3 times) so a brief rate-limit doesn't kill the run.
 
-**Sync integration: `src/server/services/syncService.ts`**
-- After ticket upsert, before `recalculate({ kind: 'source', source })`, call `autoMapAssignees(source)` and stash the count in `sync_runs.error_details` as an info entry (or a new column — using existing `error_details` JSON keeps the migration small; entries with `stage: 'auto_map'` aren't errors, just info).
+**Sync service** (`src/server/services/syncService.ts`)
+- Read `sync_window_days` from the integration row. If a `since` override is passed (history import), use that instead.
+- Compute `since` and pass to `fetchTickets` and `fetchTimeEntriesByTaskId`.
+- Track the IDs of tickets upserted in this run; pass them to `recalculate({ kind: 'ticket_ids', ids })` instead of `{ kind: 'source' }`. Big win on history imports too.
+- Append an info entry to `sync_runs.error_details` like `{ stage: 'window', message: 'since=2026-01-30T...' }`.
 
-**New endpoints:**
-- `POST /api/assigned-mappings/auto-map` (`src/routes/api/assigned-mappings.auto-map.ts`) — admin-only, calls `autoMapAssignees()` for all sources, then `recalculate({ kind: 'all' })`. Returns counts.
-- `POST /api/assigned-mappings/bulk` (`src/routes/api/assigned-mappings.bulk.ts`) — admin-only, accepts `{ items: [{ source_name, raw_assigned_name, raw_assigned_id, team_member_id }] }`, validates with Zod, inserts all rows in one batch, then runs `recalculate({ kind: 'all' })` once. Returns `{ created, skipped }`.
+**New endpoints** (`src/routes/api/`)
+- `POST /api/integrations/import-history` — body `{ source_name, from_date }`. Admin-only, Zod-validated. Calls `runSync(source, { sinceOverride: fromDate })`. Updates `history_imported_through` to `min(existing, from_date)`.
+- `POST /api/integrations/purge-old` — body `{ source_name, older_than_date, confirm: 'PURGE' }`. Admin-only. Returns `{ deleted: number }`. Uses `delete().lt('updated_at_source', cutoff).eq('source_system', source)`.
+- `GET /api/integrations/purge-preview?source_name=…&older_than_date=…` — returns `{ count }` so the dialog can show how many rows will be deleted before you confirm.
 
-**UI: `src/routes/admin.mappings.tsx`**
-- Add `bulkSelections` state: `Record<rowKey, team_member_id>`.
-- Change the unmapped table's `onChange` to update state instead of POSTing.
-- Add header buttons: **Auto-map by name** (calls auto-map endpoint, then `load()`) and **Save bulk mappings** (POSTs `/bulk` with collected items, then clears state and `load()`).
-- Disable buttons while busy; show toast with returned counts.
+**`POST /api/integrations`** — accept `sync_window_days` in the body and persist it.
 
-### Migrations
+**`GET /api/integrations`** — return `sync_window_days` and `history_imported_through` per row.
 
-None. Uses existing `assigned_name_mappings` and `team_members` tables.
+**UI** (`src/routes/admin.integrations.tsx`)
+- Add the window input next to Enabled.
+- Add an "Import history" Dialog (date picker + source select preset to current card + run button + busy state).
+- Add a "Purge old tickets" Dialog (cutoff date defaults to `today - sync_window_days`, preview count, confirm-text input).
 
 ### Files
 
-- New: `src/server/services/autoMapService.ts`
-- New: `src/routes/api/assigned-mappings.auto-map.ts`
-- New: `src/routes/api/assigned-mappings.bulk.ts`
-- Edit: `src/server/services/syncService.ts` (call auto-map before recalc)
-- Edit: `src/routes/admin.mappings.tsx` (bulk staging + two new buttons)
+- Migration: `integration_connections.sync_window_days`, `integration_connections.history_imported_through`
+- New: `src/routes/api/integrations.import-history.ts`
+- New: `src/routes/api/integrations.purge-old.ts`
+- New: `src/routes/api/integrations.purge-preview.ts`
+- Edit: `src/server/adapters/types.ts` (already has the optional `since`, leave as-is)
+- Edit: `src/server/adapters/teamworkAdapter.ts` (use `since`, drop messages, 429 backoff, time-entry filter)
+- Edit: `src/server/adapters/teamworkDeskAdapter.ts` (use `since`, drop messages, 429 backoff)
+- Edit: `src/server/services/syncService.ts` (read window, narrow recalc scope, accept `sinceOverride`)
+- Edit: `src/routes/api/integrations.ts` (read/write `sync_window_days`)
+- Edit: `src/routes/admin.integrations.tsx` (window input, history dialog, purge dialog)
 
-### Open question
+### Defaults & safeguards
 
-When auto-map finds **two team members with the same name** (rare, but possible if you have two "Alex"), it skips that raw assignee. Do you want me to (a) skip silently and let you map manually, or (b) surface a count + a list in the bulk panel so you know which ones need attention? Default if you don't pick: **(b)**.
+- New connections: `sync_window_days = 90`, `history_imported_through = NULL`.
+- Purge requires typing "PURGE" and shows the count first; never deletes companies, mappings, or rules.
+- Time-entry fetch is also windowed — that's the heaviest call and the main reason syncs were dying.
