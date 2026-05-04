@@ -34,6 +34,7 @@ import { Route as ApiTicketsIdRouteImport } from './routes/api/tickets.$id'
 import { Route as ApiTeamMembersIdRouteImport } from './routes/api/team-members.$id'
 import { Route as ApiTagRulesIdRouteImport } from './routes/api/tag-rules.$id'
 import { Route as ApiSyncRunsVerificationRouteImport } from './routes/api/sync-runs.verification'
+import { Route as ApiSyncRunsHealthRouteImport } from './routes/api/sync-runs.health'
 import { Route as ApiReportsTrendsRouteImport } from './routes/api/reports.trends'
 import { Route as ApiReportsSummaryRouteImport } from './routes/api/reports.summary'
 import { Route as ApiReportsByTeamMemberRouteImport } from './routes/api/reports.by-team-member'
@@ -175,6 +176,11 @@ const ApiSyncRunsVerificationRoute = ApiSyncRunsVerificationRouteImport.update({
   path: '/verification',
   getParentRoute: () => ApiSyncRunsRoute,
 } as any)
+const ApiSyncRunsHealthRoute = ApiSyncRunsHealthRouteImport.update({
+  id: '/health',
+  path: '/health',
+  getParentRoute: () => ApiSyncRunsRoute,
+} as any)
 const ApiReportsTrendsRoute = ApiReportsTrendsRouteImport.update({
   id: '/api/reports/trends',
   path: '/api/reports/trends',
@@ -291,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
   '/api/reports/summary': typeof ApiReportsSummaryRoute
   '/api/reports/trends': typeof ApiReportsTrendsRoute
+  '/api/sync-runs/health': typeof ApiSyncRunsHealthRoute
   '/api/sync-runs/verification': typeof ApiSyncRunsVerificationRoute
   '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
   '/api/team-members/$id': typeof ApiTeamMembersIdRoute
@@ -332,6 +339,7 @@ export interface FileRoutesByTo {
   '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
   '/api/reports/summary': typeof ApiReportsSummaryRoute
   '/api/reports/trends': typeof ApiReportsTrendsRoute
+  '/api/sync-runs/health': typeof ApiSyncRunsHealthRoute
   '/api/sync-runs/verification': typeof ApiSyncRunsVerificationRoute
   '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
   '/api/team-members/$id': typeof ApiTeamMembersIdRoute
@@ -375,6 +383,7 @@ export interface FileRoutesById {
   '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
   '/api/reports/summary': typeof ApiReportsSummaryRoute
   '/api/reports/trends': typeof ApiReportsTrendsRoute
+  '/api/sync-runs/health': typeof ApiSyncRunsHealthRoute
   '/api/sync-runs/verification': typeof ApiSyncRunsVerificationRoute
   '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
   '/api/team-members/$id': typeof ApiTeamMembersIdRoute
@@ -419,6 +428,7 @@ export interface FileRouteTypes {
     | '/api/reports/by-team-member'
     | '/api/reports/summary'
     | '/api/reports/trends'
+    | '/api/sync-runs/health'
     | '/api/sync-runs/verification'
     | '/api/tag-rules/$id'
     | '/api/team-members/$id'
@@ -460,6 +470,7 @@ export interface FileRouteTypes {
     | '/api/reports/by-team-member'
     | '/api/reports/summary'
     | '/api/reports/trends'
+    | '/api/sync-runs/health'
     | '/api/sync-runs/verification'
     | '/api/tag-rules/$id'
     | '/api/team-members/$id'
@@ -502,6 +513,7 @@ export interface FileRouteTypes {
     | '/api/reports/by-team-member'
     | '/api/reports/summary'
     | '/api/reports/trends'
+    | '/api/sync-runs/health'
     | '/api/sync-runs/verification'
     | '/api/tag-rules/$id'
     | '/api/team-members/$id'
@@ -705,6 +717,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSyncRunsVerificationRouteImport
       parentRoute: typeof ApiSyncRunsRoute
     }
+    '/api/sync-runs/health': {
+      id: '/api/sync-runs/health'
+      path: '/health'
+      fullPath: '/api/sync-runs/health'
+      preLoaderRoute: typeof ApiSyncRunsHealthRouteImport
+      parentRoute: typeof ApiSyncRunsRoute
+    }
     '/api/reports/trends': {
       id: '/api/reports/trends'
       path: '/api/reports/trends'
@@ -889,10 +908,12 @@ const ApiIntegrationsRouteWithChildren = ApiIntegrationsRoute._addFileChildren(
 )
 
 interface ApiSyncRunsRouteChildren {
+  ApiSyncRunsHealthRoute: typeof ApiSyncRunsHealthRoute
   ApiSyncRunsVerificationRoute: typeof ApiSyncRunsVerificationRoute
 }
 
 const ApiSyncRunsRouteChildren: ApiSyncRunsRouteChildren = {
+  ApiSyncRunsHealthRoute: ApiSyncRunsHealthRoute,
   ApiSyncRunsVerificationRoute: ApiSyncRunsVerificationRoute,
 }
 
