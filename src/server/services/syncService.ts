@@ -14,6 +14,10 @@ const MAX_TICKET_PAGES = 500;
 const MAX_TIME_PAGES = 3000;
 const MAX_REF_PAGES = 200;
 
+/** Supabase generated types want `Json`; our shapes are structurally compatible. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const asJson = (v: unknown): any => v;
+
 interface RunCursor {
   refs?: SyncRefs;
   errors?: Array<{ stage: string; message: string }>;
@@ -111,7 +115,7 @@ export async function startRun(
       since_at: since ? since.toISOString() : null,
       heartbeat_at: new Date().toISOString(),
       progress_message: 'Starting…',
-      cursor: { refs: {}, errors: [], info: [{ stage: 'window', message: since ? `since=${since.toISOString()}` : 'since=ALL' }] },
+      cursor: asJson({ refs: {}, errors: [], info: [{ stage: 'window', message: since ? `since=${since.toISOString()}` : 'since=ALL' }] }),
     })
     .select('id')
     .single();
@@ -226,7 +230,7 @@ export async function stepRun(runId: string): Promise<StepResult> {
 
         const { error: upErr } = await supabaseAdmin
           .from('tickets')
-          .upsert(normalized, { onConflict: 'source_system,external_ticket_id' });
+          .upsert(asJson(normalized) as never[], { onConflict: 'source_system,external_ticket_id' });
         if (upErr) errors.push({ stage: 'upsert_batch', message: upErr.message });
         else {
           for (const n of normalized) {
@@ -294,7 +298,7 @@ export async function stepRun(runId: string): Promise<StepResult> {
           records_updated: updated,
           error_count: errors.length,
           error_details: [...errors, ...info].slice(0, 60),
-          cursor: { ...cursor, refs: {}, errors, info },
+          cursor: asJson({ ...cursor, refs: {}, errors, info }),
         })
         .eq('id', runId);
       await supabaseAdmin
@@ -334,7 +338,7 @@ export async function stepRun(runId: string): Promise<StepResult> {
       records_updated: updated,
       error_count: errors.length,
       error_details: [...errors, ...info].slice(0, 60),
-      cursor: { ...cursor, refs, errors, info },
+      cursor: asJson({ ...cursor, refs, errors, info }),
     })
     .eq('id', runId);
 
