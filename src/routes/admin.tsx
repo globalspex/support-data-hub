@@ -43,10 +43,7 @@ function AdminLayout() {
               })}
             </nav>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{user.email}</span>
-            <Button size="sm" variant="outline" onClick={() => signOut()}>Sign out</Button>
-          </div>
+        
         </div>
       </header>
       <main className="max-w-7xl mx-auto p-6">
