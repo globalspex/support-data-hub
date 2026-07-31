@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { driveRun, stageLabel } from '@/lib/syncRunner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,20 +52,27 @@ function ImportHistoryDialog({ source, open, onOpenChange, onDone }: {
   const [fromDate, setFromDate] = useState(daysAgoISODate(365));
   const [busy, setBusy] = useState(false);
 
+  const [progress, setProgress] = useState<string>('');
+
   const run = async () => {
     setBusy(true);
+    setProgress('Starting…');
     try {
-      const r = (await apiFetch('/api/integrations/import-history', {
+      const started = (await apiFetch('/api/integrations/import-history', {
         method: 'POST',
         body: JSON.stringify({ source_name: source, from_date: fromDate }),
-      })) as { received?: number; created?: number; updated?: number; errorCount?: number };
-      toast.success(`History imported — received ${r.received ?? 0}, created ${r.created ?? 0}, updated ${r.updated ?? 0}`);
+      })) as { runId: string };
+      const final = await driveRun(started.runId, (r) =>
+        setProgress(`${stageLabel(r.stage)} — ${r.received} received, ${r.created} new`),
+      );
+      toast.success(`History imported — received ${final.received}, created ${final.created}, updated ${final.updated}`);
       onOpenChange(false);
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+      setProgress('');
     }
   };
 
