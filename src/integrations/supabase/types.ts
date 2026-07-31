@@ -184,14 +184,20 @@ export type Database = {
       sync_runs: {
         Row: {
           created_at: string
+          cursor: Json | null
           error_count: number | null
           error_details: Json | null
           finished_at: string | null
+          heartbeat_at: string | null
           id: string
+          progress_message: string | null
           records_created: number | null
           records_received: number | null
           records_updated: number | null
+          since_at: string | null
           source_name: string
+          stage: string | null
+          stage_page: number
           started_at: string
           status: string
           sync_type: string
@@ -199,14 +205,20 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          cursor?: Json | null
           error_count?: number | null
           error_details?: Json | null
           finished_at?: string | null
+          heartbeat_at?: string | null
           id?: string
+          progress_message?: string | null
           records_created?: number | null
           records_received?: number | null
           records_updated?: number | null
+          since_at?: string | null
           source_name: string
+          stage?: string | null
+          stage_page?: number
           started_at?: string
           status?: string
           sync_type?: string
@@ -214,14 +226,20 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          cursor?: Json | null
           error_count?: number | null
           error_details?: Json | null
           finished_at?: string | null
+          heartbeat_at?: string | null
           id?: string
+          progress_message?: string | null
           records_created?: number | null
           records_received?: number | null
           records_updated?: number | null
+          since_at?: string | null
           source_name?: string
+          stage?: string | null
+          stage_page?: number
           started_at?: string
           status?: string
           sync_type?: string
@@ -396,6 +414,33 @@ export type Database = {
           },
         ]
       }
+      time_logs: {
+        Row: {
+          created_at: string
+          external_entry_id: string
+          external_ticket_id: string
+          hours: number
+          logged_at: string | null
+          source_name: string
+        }
+        Insert: {
+          created_at?: string
+          external_entry_id: string
+          external_ticket_id: string
+          hours?: number
+          logged_at?: string | null
+          source_name: string
+        }
+        Update: {
+          created_at?: string
+          external_entry_id?: string
+          external_ticket_id?: string
+          hours?: number
+          logged_at?: string | null
+          source_name?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -422,12 +467,77 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_time_logs: { Args: { _source: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      recalc_tickets: {
+        Args: { _source?: string }
+        Returns: {
+          processed: number
+          unmapped: number
+        }[]
+      }
+      report_by_company: {
+        Args: {
+          _company?: string
+          _date_from?: string
+          _date_to?: string
+          _inbox?: string
+          _member?: string
+          _source?: string
+          _status?: string
+          _tag?: string
+          _type?: string
+        }
+        Returns: Json
+      }
+      report_by_team_member: {
+        Args: {
+          _company?: string
+          _date_from?: string
+          _date_to?: string
+          _inbox?: string
+          _member?: string
+          _source?: string
+          _status?: string
+          _tag?: string
+          _type?: string
+        }
+        Returns: Json
+      }
+      report_summary: {
+        Args: {
+          _company?: string
+          _date_from?: string
+          _date_to?: string
+          _inbox?: string
+          _member?: string
+          _source?: string
+          _status?: string
+          _tag?: string
+          _type?: string
+        }
+        Returns: Json
+      }
+      report_trends: {
+        Args: {
+          _company?: string
+          _date_from?: string
+          _date_to?: string
+          _granularity?: string
+          _inbox?: string
+          _member?: string
+          _source?: string
+          _status?: string
+          _tag?: string
+          _type?: string
+        }
+        Returns: Json
       }
     }
     Enums: {
