@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -51,11 +50,6 @@ import { Route as ApiAssignedMappingsBulkRouteImport } from './routes/api/assign
 import { Route as ApiAssignedMappingsAutoMapRouteImport } from './routes/api/assigned-mappings.auto-map'
 import { Route as ApiAssignedMappingsIdRouteImport } from './routes/api/assigned-mappings.$id'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -263,7 +257,6 @@ const ApiAssignedMappingsIdRoute = ApiAssignedMappingsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
-  '/login': typeof LoginRoute
   '/admin/companies': typeof AdminCompaniesRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
   '/admin/mappings': typeof AdminMappingsRoute
@@ -305,7 +298,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/admin/companies': typeof AdminCompaniesRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
   '/admin/mappings': typeof AdminMappingsRoute
@@ -349,7 +341,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
-  '/login': typeof LoginRoute
   '/admin/companies': typeof AdminCompaniesRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
   '/admin/mappings': typeof AdminMappingsRoute
@@ -394,7 +385,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
-    | '/login'
     | '/admin/companies'
     | '/admin/integrations'
     | '/admin/mappings'
@@ -436,7 +426,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/login'
     | '/admin/companies'
     | '/admin/integrations'
     | '/admin/mappings'
@@ -479,7 +468,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
-    | '/login'
     | '/admin/companies'
     | '/admin/integrations'
     | '/admin/mappings'
@@ -523,7 +511,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
-  LoginRoute: typeof LoginRoute
   ApiAssignedMappingsRoute: typeof ApiAssignedMappingsRouteWithChildren
   ApiCompaniesRoute: typeof ApiCompaniesRouteWithChildren
   ApiIntegrationsRoute: typeof ApiIntegrationsRouteWithChildren
@@ -542,13 +529,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -960,7 +940,6 @@ const ApiTicketsRouteWithChildren = ApiTicketsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
-  LoginRoute: LoginRoute,
   ApiAssignedMappingsRoute: ApiAssignedMappingsRouteWithChildren,
   ApiCompaniesRoute: ApiCompaniesRouteWithChildren,
   ApiIntegrationsRoute: ApiIntegrationsRouteWithChildren,
