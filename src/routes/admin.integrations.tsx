@@ -199,6 +199,7 @@ function IntegrationCard({ row, onChange }: { row: IntegrationRow; onChange: () 
   const [enabled, setEnabled] = useState(row.is_enabled);
   const [windowDays, setWindowDays] = useState<number>(row.sync_window_days ?? 90);
   const [busy, setBusy] = useState<string | null>(null);
+  const [syncProgress, setSyncProgress] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [purgeOpen, setPurgeOpen] = useState(false);
 
@@ -244,17 +245,25 @@ function IntegrationCard({ row, onChange }: { row: IntegrationRow; onChange: () 
 
   const sync = async () => {
     setBusy('sync');
+    setSyncProgress('Starting…');
     try {
-      await apiFetch('/api/integrations/sync', {
+      const started = (await apiFetch('/api/integrations/sync', {
         method: 'POST',
         body: JSON.stringify({ source_name: row.source_name }),
-      });
-      toast.success('Sync started in the background. Check Sync Runs for progress.');
+      })) as { runs: Array<{ runId: string }> };
+      const runId = started.runs?.[0]?.runId;
+      if (!runId) throw new Error('No sync run was created');
+      const final = await driveRun(runId, (r) =>
+        setSyncProgress(`${stageLabel(r.stage)} — ${r.received} received, ${r.created} new, ${r.updated} updated`),
+      );
+      if (final.status === 'error') toast.error(`Sync failed: ${final.message}`);
+      else toast.success(`Sync ${final.status} — received ${final.received}, created ${final.created}, updated ${final.updated}`);
       onChange();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
+      setSyncProgress('');
     }
   };
 
