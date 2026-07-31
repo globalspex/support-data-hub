@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { driveRun, stageLabel } from '@/lib/syncRunner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,20 +52,27 @@ function ImportHistoryDialog({ source, open, onOpenChange, onDone }: {
   const [fromDate, setFromDate] = useState(daysAgoISODate(365));
   const [busy, setBusy] = useState(false);
 
+  const [progress, setProgress] = useState<string>('');
+
   const run = async () => {
     setBusy(true);
+    setProgress('Starting…');
     try {
-      const r = (await apiFetch('/api/integrations/import-history', {
+      const started = (await apiFetch('/api/integrations/import-history', {
         method: 'POST',
         body: JSON.stringify({ source_name: source, from_date: fromDate }),
-      })) as { received?: number; created?: number; updated?: number; errorCount?: number };
-      toast.success(`History imported — received ${r.received ?? 0}, created ${r.created ?? 0}, updated ${r.updated ?? 0}`);
+      })) as { runId: string };
+      const final = await driveRun(started.runId, (r) =>
+        setProgress(`${stageLabel(r.stage)} — ${r.received} received, ${r.created} new`),
+      );
+      toast.success(`History imported — received ${final.received}, created ${final.created}, updated ${final.updated}`);
       onOpenChange(false);
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+      setProgress('');
     }
   };
 
@@ -80,6 +88,8 @@ function ImportHistoryDialog({ source, open, onOpenChange, onDone }: {
         <div className="space-y-2">
           <Label>From date</Label>
           <Input type="date" value={fromDate} max={todayISODate()} onChange={(e) => setFromDate(e.target.value)} />
+          {progress && <p className="text-sm text-muted-foreground">{progress}</p>}
+          {busy && <p className="text-xs text-muted-foreground">Keep this tab open until the import finishes.</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
@@ -189,6 +199,7 @@ function IntegrationCard({ row, onChange }: { row: IntegrationRow; onChange: () 
   const [enabled, setEnabled] = useState(row.is_enabled);
   const [windowDays, setWindowDays] = useState<number>(row.sync_window_days ?? 90);
   const [busy, setBusy] = useState<string | null>(null);
+  const [syncProgress, setSyncProgress] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [purgeOpen, setPurgeOpen] = useState(false);
 
@@ -234,17 +245,25 @@ function IntegrationCard({ row, onChange }: { row: IntegrationRow; onChange: () 
 
   const sync = async () => {
     setBusy('sync');
+    setSyncProgress('Starting…');
     try {
-      await apiFetch('/api/integrations/sync', {
+      const started = (await apiFetch('/api/integrations/sync', {
         method: 'POST',
         body: JSON.stringify({ source_name: row.source_name }),
-      });
-      toast.success('Sync started in the background. Check Sync Runs for progress.');
+      })) as { runs: Array<{ runId: string }> };
+      const runId = started.runs?.[0]?.runId;
+      if (!runId) throw new Error('No sync run was created');
+      const final = await driveRun(runId, (r) =>
+        setSyncProgress(`${stageLabel(r.stage)} — ${r.received} received, ${r.created} new, ${r.updated} updated`),
+      );
+      if (final.status === 'error') toast.error(`Sync failed: ${final.message}`);
+      else toast.success(`Sync ${final.status} — received ${final.received}, created ${final.created}, updated ${final.updated}`);
       onChange();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
+      setSyncProgress('');
     }
   };
 
@@ -307,6 +326,12 @@ function IntegrationCard({ row, onChange }: { row: IntegrationRow; onChange: () 
           <Button variant="outline" onClick={() => setHistoryOpen(true)} disabled={!!busy || !row.is_enabled}>Import history…</Button>
           <Button variant="outline" onClick={() => setPurgeOpen(true)} disabled={!!busy} className="text-destructive hover:text-destructive">Purge old tickets…</Button>
         </div>
+        {syncProgress && (
+          <div className="rounded-md border bg-muted/40 p-3 text-sm">
+            <div>{syncProgress}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Keep this tab open until the sync finishes.</p>
+          </div>
+        )}
         <div className="text-xs text-muted-foreground space-y-1 pt-2">
           <div>Last tested: {row.last_tested_at ?? '—'}</div>
           <div>Last sync: {row.last_sync_at ?? '—'}</div>

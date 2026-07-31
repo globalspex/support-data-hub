@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 import { requireAdminFromRequest, jsonResponse } from '@/server/services/apiAuth';
-import { createSyncRun, getIntegration } from '@/server/services/syncService';
+import { startRun } from '@/server/services/syncService';
 
 const Body = z.object({
   source_name: z.enum(['teamwork', 'teamwork_desk']),
@@ -21,29 +21,8 @@ export const Route = createFileRoute('/api/integrations/import-history')({
         if (isNaN(since.getTime())) return jsonResponse({ error: 'Invalid from_date' }, { status: 400 });
 
         try {
-          const row = await getIntegration(parsed.data.source_name);
-          if (!row || !row.is_enabled || !row.base_url || !row.api_key_or_token) {
-            return jsonResponse({ ok: false, error: 'Integration is not configured/enabled.' }, { status: 400 });
-          }
-
-          const runId = await createSyncRun(parsed.data.source_name);
-
-          const origin = new URL(request.url).origin;
-          const token = process.env.SUPABASE_SERVICE_ROLE_KEY;
-          if (token) {
-            void fetch(`${origin}/api/internal/run-sync`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                source_name: parsed.data.source_name,
-                run_id: runId,
-                since: since.toISOString(),
-                token,
-              }),
-            }).catch(() => {});
-          }
-
-          return jsonResponse({ ok: true, queued: true, runId, since: since.toISOString() });
+          const r = await startRun(parsed.data.source_name, { since, syncType: 'history' });
+          return jsonResponse({ ok: true, runId: r.runId, stage: r.stage, since: r.since });
         } catch (e) {
           return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
         }

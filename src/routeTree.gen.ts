@@ -30,6 +30,7 @@ import { Route as AdminMappingsRouteImport } from './routes/admin.mappings'
 import { Route as AdminIntegrationsRouteImport } from './routes/admin.integrations'
 import { Route as AdminCompaniesRouteImport } from './routes/admin.companies'
 import { Route as ApiTicketsIdRouteImport } from './routes/api/tickets.$id'
+import { Route as ApiTeamMembersBootstrapRouteImport } from './routes/api/team-members.bootstrap'
 import { Route as ApiTeamMembersIdRouteImport } from './routes/api/team-members.$id'
 import { Route as ApiTagRulesIdRouteImport } from './routes/api/tag-rules.$id'
 import { Route as ApiSyncRunsVerificationRouteImport } from './routes/api/sync-runs.verification'
@@ -38,8 +39,8 @@ import { Route as ApiReportsTrendsRouteImport } from './routes/api/reports.trend
 import { Route as ApiReportsSummaryRouteImport } from './routes/api/reports.summary'
 import { Route as ApiReportsByTeamMemberRouteImport } from './routes/api/reports.by-team-member'
 import { Route as ApiReportsByCompanyRouteImport } from './routes/api/reports.by-company'
-import { Route as ApiInternalRunSyncRouteImport } from './routes/api/internal.run-sync'
 import { Route as ApiIntegrationsTestRouteImport } from './routes/api/integrations.test'
+import { Route as ApiIntegrationsSyncStepRouteImport } from './routes/api/integrations.sync-step'
 import { Route as ApiIntegrationsSyncRouteImport } from './routes/api/integrations.sync'
 import { Route as ApiIntegrationsPurgePreviewRouteImport } from './routes/api/integrations.purge-preview'
 import { Route as ApiIntegrationsPurgeOldRouteImport } from './routes/api/integrations.purge-old'
@@ -155,6 +156,11 @@ const ApiTicketsIdRoute = ApiTicketsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiTicketsRoute,
 } as any)
+const ApiTeamMembersBootstrapRoute = ApiTeamMembersBootstrapRouteImport.update({
+  id: '/bootstrap',
+  path: '/bootstrap',
+  getParentRoute: () => ApiTeamMembersRoute,
+} as any)
 const ApiTeamMembersIdRoute = ApiTeamMembersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -195,14 +201,14 @@ const ApiReportsByCompanyRoute = ApiReportsByCompanyRouteImport.update({
   path: '/api/reports/by-company',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiInternalRunSyncRoute = ApiInternalRunSyncRouteImport.update({
-  id: '/api/internal/run-sync',
-  path: '/api/internal/run-sync',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiIntegrationsTestRoute = ApiIntegrationsTestRouteImport.update({
   id: '/test',
   path: '/test',
+  getParentRoute: () => ApiIntegrationsRoute,
+} as any)
+const ApiIntegrationsSyncStepRoute = ApiIntegrationsSyncStepRouteImport.update({
+  id: '/sync-step',
+  path: '/sync-step',
   getParentRoute: () => ApiIntegrationsRoute,
 } as any)
 const ApiIntegrationsSyncRoute = ApiIntegrationsSyncRouteImport.update({
@@ -284,8 +290,8 @@ export interface FileRoutesByFullPath {
   '/api/integrations/purge-old': typeof ApiIntegrationsPurgeOldRoute
   '/api/integrations/purge-preview': typeof ApiIntegrationsPurgePreviewRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
+  '/api/integrations/sync-step': typeof ApiIntegrationsSyncStepRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
-  '/api/internal/run-sync': typeof ApiInternalRunSyncRoute
   '/api/reports/by-company': typeof ApiReportsByCompanyRoute
   '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
   '/api/reports/summary': typeof ApiReportsSummaryRoute
@@ -294,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/api/sync-runs/verification': typeof ApiSyncRunsVerificationRoute
   '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
   '/api/team-members/$id': typeof ApiTeamMembersIdRoute
+  '/api/team-members/bootstrap': typeof ApiTeamMembersBootstrapRoute
   '/api/tickets/$id': typeof ApiTicketsIdRoute
 }
 export interface FileRoutesByTo {
@@ -325,8 +332,8 @@ export interface FileRoutesByTo {
   '/api/integrations/purge-old': typeof ApiIntegrationsPurgeOldRoute
   '/api/integrations/purge-preview': typeof ApiIntegrationsPurgePreviewRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
+  '/api/integrations/sync-step': typeof ApiIntegrationsSyncStepRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
-  '/api/internal/run-sync': typeof ApiInternalRunSyncRoute
   '/api/reports/by-company': typeof ApiReportsByCompanyRoute
   '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
   '/api/reports/summary': typeof ApiReportsSummaryRoute
@@ -335,6 +342,7 @@ export interface FileRoutesByTo {
   '/api/sync-runs/verification': typeof ApiSyncRunsVerificationRoute
   '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
   '/api/team-members/$id': typeof ApiTeamMembersIdRoute
+  '/api/team-members/bootstrap': typeof ApiTeamMembersBootstrapRoute
   '/api/tickets/$id': typeof ApiTicketsIdRoute
 }
 export interface FileRoutesById {
@@ -368,8 +376,8 @@ export interface FileRoutesById {
   '/api/integrations/purge-old': typeof ApiIntegrationsPurgeOldRoute
   '/api/integrations/purge-preview': typeof ApiIntegrationsPurgePreviewRoute
   '/api/integrations/sync': typeof ApiIntegrationsSyncRoute
+  '/api/integrations/sync-step': typeof ApiIntegrationsSyncStepRoute
   '/api/integrations/test': typeof ApiIntegrationsTestRoute
-  '/api/internal/run-sync': typeof ApiInternalRunSyncRoute
   '/api/reports/by-company': typeof ApiReportsByCompanyRoute
   '/api/reports/by-team-member': typeof ApiReportsByTeamMemberRoute
   '/api/reports/summary': typeof ApiReportsSummaryRoute
@@ -378,6 +386,7 @@ export interface FileRoutesById {
   '/api/sync-runs/verification': typeof ApiSyncRunsVerificationRoute
   '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
   '/api/team-members/$id': typeof ApiTeamMembersIdRoute
+  '/api/team-members/bootstrap': typeof ApiTeamMembersBootstrapRoute
   '/api/tickets/$id': typeof ApiTicketsIdRoute
 }
 export interface FileRouteTypes {
@@ -412,8 +421,8 @@ export interface FileRouteTypes {
     | '/api/integrations/purge-old'
     | '/api/integrations/purge-preview'
     | '/api/integrations/sync'
+    | '/api/integrations/sync-step'
     | '/api/integrations/test'
-    | '/api/internal/run-sync'
     | '/api/reports/by-company'
     | '/api/reports/by-team-member'
     | '/api/reports/summary'
@@ -422,6 +431,7 @@ export interface FileRouteTypes {
     | '/api/sync-runs/verification'
     | '/api/tag-rules/$id'
     | '/api/team-members/$id'
+    | '/api/team-members/bootstrap'
     | '/api/tickets/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -453,8 +463,8 @@ export interface FileRouteTypes {
     | '/api/integrations/purge-old'
     | '/api/integrations/purge-preview'
     | '/api/integrations/sync'
+    | '/api/integrations/sync-step'
     | '/api/integrations/test'
-    | '/api/internal/run-sync'
     | '/api/reports/by-company'
     | '/api/reports/by-team-member'
     | '/api/reports/summary'
@@ -463,6 +473,7 @@ export interface FileRouteTypes {
     | '/api/sync-runs/verification'
     | '/api/tag-rules/$id'
     | '/api/team-members/$id'
+    | '/api/team-members/bootstrap'
     | '/api/tickets/$id'
   id:
     | '__root__'
@@ -495,8 +506,8 @@ export interface FileRouteTypes {
     | '/api/integrations/purge-old'
     | '/api/integrations/purge-preview'
     | '/api/integrations/sync'
+    | '/api/integrations/sync-step'
     | '/api/integrations/test'
-    | '/api/internal/run-sync'
     | '/api/reports/by-company'
     | '/api/reports/by-team-member'
     | '/api/reports/summary'
@@ -505,6 +516,7 @@ export interface FileRouteTypes {
     | '/api/sync-runs/verification'
     | '/api/tag-rules/$id'
     | '/api/team-members/$id'
+    | '/api/team-members/bootstrap'
     | '/api/tickets/$id'
   fileRoutesById: FileRoutesById
 }
@@ -520,7 +532,6 @@ export interface RootRouteChildren {
   ApiTagRulesRoute: typeof ApiTagRulesRouteWithChildren
   ApiTeamMembersRoute: typeof ApiTeamMembersRouteWithChildren
   ApiTicketsRoute: typeof ApiTicketsRouteWithChildren
-  ApiInternalRunSyncRoute: typeof ApiInternalRunSyncRoute
   ApiReportsByCompanyRoute: typeof ApiReportsByCompanyRoute
   ApiReportsByTeamMemberRoute: typeof ApiReportsByTeamMemberRoute
   ApiReportsSummaryRoute: typeof ApiReportsSummaryRoute
@@ -676,6 +687,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTicketsIdRouteImport
       parentRoute: typeof ApiTicketsRoute
     }
+    '/api/team-members/bootstrap': {
+      id: '/api/team-members/bootstrap'
+      path: '/bootstrap'
+      fullPath: '/api/team-members/bootstrap'
+      preLoaderRoute: typeof ApiTeamMembersBootstrapRouteImport
+      parentRoute: typeof ApiTeamMembersRoute
+    }
     '/api/team-members/$id': {
       id: '/api/team-members/$id'
       path: '/$id'
@@ -732,18 +750,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiReportsByCompanyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/internal/run-sync': {
-      id: '/api/internal/run-sync'
-      path: '/api/internal/run-sync'
-      fullPath: '/api/internal/run-sync'
-      preLoaderRoute: typeof ApiInternalRunSyncRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/integrations/test': {
       id: '/api/integrations/test'
       path: '/test'
       fullPath: '/api/integrations/test'
       preLoaderRoute: typeof ApiIntegrationsTestRouteImport
+      parentRoute: typeof ApiIntegrationsRoute
+    }
+    '/api/integrations/sync-step': {
+      id: '/api/integrations/sync-step'
+      path: '/sync-step'
+      fullPath: '/api/integrations/sync-step'
+      preLoaderRoute: typeof ApiIntegrationsSyncStepRouteImport
       parentRoute: typeof ApiIntegrationsRoute
     }
     '/api/integrations/sync': {
@@ -872,6 +890,7 @@ interface ApiIntegrationsRouteChildren {
   ApiIntegrationsPurgeOldRoute: typeof ApiIntegrationsPurgeOldRoute
   ApiIntegrationsPurgePreviewRoute: typeof ApiIntegrationsPurgePreviewRoute
   ApiIntegrationsSyncRoute: typeof ApiIntegrationsSyncRoute
+  ApiIntegrationsSyncStepRoute: typeof ApiIntegrationsSyncStepRoute
   ApiIntegrationsTestRoute: typeof ApiIntegrationsTestRoute
 }
 
@@ -880,6 +899,7 @@ const ApiIntegrationsRouteChildren: ApiIntegrationsRouteChildren = {
   ApiIntegrationsPurgeOldRoute: ApiIntegrationsPurgeOldRoute,
   ApiIntegrationsPurgePreviewRoute: ApiIntegrationsPurgePreviewRoute,
   ApiIntegrationsSyncRoute: ApiIntegrationsSyncRoute,
+  ApiIntegrationsSyncStepRoute: ApiIntegrationsSyncStepRoute,
   ApiIntegrationsTestRoute: ApiIntegrationsTestRoute,
 }
 
@@ -915,10 +935,12 @@ const ApiTagRulesRouteWithChildren = ApiTagRulesRoute._addFileChildren(
 
 interface ApiTeamMembersRouteChildren {
   ApiTeamMembersIdRoute: typeof ApiTeamMembersIdRoute
+  ApiTeamMembersBootstrapRoute: typeof ApiTeamMembersBootstrapRoute
 }
 
 const ApiTeamMembersRouteChildren: ApiTeamMembersRouteChildren = {
   ApiTeamMembersIdRoute: ApiTeamMembersIdRoute,
+  ApiTeamMembersBootstrapRoute: ApiTeamMembersBootstrapRoute,
 }
 
 const ApiTeamMembersRouteWithChildren = ApiTeamMembersRoute._addFileChildren(
@@ -949,7 +971,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTagRulesRoute: ApiTagRulesRouteWithChildren,
   ApiTeamMembersRoute: ApiTeamMembersRouteWithChildren,
   ApiTicketsRoute: ApiTicketsRouteWithChildren,
-  ApiInternalRunSyncRoute: ApiInternalRunSyncRoute,
   ApiReportsByCompanyRoute: ApiReportsByCompanyRoute,
   ApiReportsByTeamMemberRoute: ApiReportsByTeamMemberRoute,
   ApiReportsSummaryRoute: ApiReportsSummaryRoute,
@@ -958,12 +979,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

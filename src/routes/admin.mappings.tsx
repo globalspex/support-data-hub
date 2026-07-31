@@ -43,6 +43,7 @@ function MappingsPage() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [autoBusy, setAutoBusy] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bootstrapBusy, setBootstrapBusy] = useState(false);
   const [bulkSelections, setBulkSelections] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
@@ -90,6 +91,18 @@ function MappingsPage() {
     [bulkSelections],
   );
 
+  const runBootstrap = async () => {
+    setBootstrapBusy(true);
+    try {
+      const r = await apiFetch('/api/team-members/bootstrap', { method: 'POST' }) as {
+        members_created: number; mappings_created: number; unmapped: number;
+      };
+      toast.success(`Created ${r.members_created} team member${r.members_created === 1 ? '' : 's'} and ${r.mappings_created} mapping${r.mappings_created === 1 ? '' : 's'}. Set their rates on the Team Members page.`);
+      await load();
+    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
+    finally { setBootstrapBusy(false); }
+  };
+
   const saveBulk = async () => {
     const items = data.unmapped
       .map((u) => ({ u, tm: bulkSelections[rowKey(u)] }))
@@ -122,10 +135,13 @@ function MappingsPage() {
           <p className="text-sm text-muted-foreground">Map raw assignee names from each source to internal team members. Auto-map runs on every sync; use the buttons below to trigger it now or to bulk-map leftovers.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={runAutoMap} disabled={autoBusy || bulkBusy}>
+          <Button variant="outline" onClick={runBootstrap} disabled={autoBusy || bulkBusy || bootstrapBusy}>
+            {bootstrapBusy ? 'Creating…' : 'Create team members from assignees'}
+          </Button>
+          <Button variant="outline" onClick={runAutoMap} disabled={autoBusy || bulkBusy || bootstrapBusy}>
             {autoBusy ? 'Auto-mapping…' : 'Auto-map by name'}
           </Button>
-          <Button onClick={saveBulk} disabled={bulkBusy || autoBusy || stagedCount === 0}>
+          <Button onClick={saveBulk} disabled={bulkBusy || autoBusy || bootstrapBusy || stagedCount === 0}>
             {bulkBusy ? 'Saving…' : `Save bulk mappings${stagedCount ? ` (${stagedCount})` : ''}`}
           </Button>
         </div>
