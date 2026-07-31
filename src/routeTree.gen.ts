@@ -30,6 +30,7 @@ import { Route as AdminMappingsRouteImport } from './routes/admin.mappings'
 import { Route as AdminIntegrationsRouteImport } from './routes/admin.integrations'
 import { Route as AdminCompaniesRouteImport } from './routes/admin.companies'
 import { Route as ApiTicketsIdRouteImport } from './routes/api/tickets.$id'
+import { Route as ApiTeamMembersBootstrapRouteImport } from './routes/api/team-members.bootstrap'
 import { Route as ApiTeamMembersIdRouteImport } from './routes/api/team-members.$id'
 import { Route as ApiTagRulesIdRouteImport } from './routes/api/tag-rules.$id'
 import { Route as ApiSyncRunsVerificationRouteImport } from './routes/api/sync-runs.verification'
@@ -154,6 +155,11 @@ const ApiTicketsIdRoute = ApiTicketsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => ApiTicketsRoute,
+} as any)
+const ApiTeamMembersBootstrapRoute = ApiTeamMembersBootstrapRouteImport.update({
+  id: '/bootstrap',
+  path: '/bootstrap',
+  getParentRoute: () => ApiTeamMembersRoute,
 } as any)
 const ApiTeamMembersIdRoute = ApiTeamMembersIdRouteImport.update({
   id: '/$id',
@@ -294,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/api/sync-runs/verification': typeof ApiSyncRunsVerificationRoute
   '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
   '/api/team-members/$id': typeof ApiTeamMembersIdRoute
+  '/api/team-members/bootstrap': typeof ApiTeamMembersBootstrapRoute
   '/api/tickets/$id': typeof ApiTicketsIdRoute
 }
 export interface FileRoutesByTo {
@@ -335,6 +342,7 @@ export interface FileRoutesByTo {
   '/api/sync-runs/verification': typeof ApiSyncRunsVerificationRoute
   '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
   '/api/team-members/$id': typeof ApiTeamMembersIdRoute
+  '/api/team-members/bootstrap': typeof ApiTeamMembersBootstrapRoute
   '/api/tickets/$id': typeof ApiTicketsIdRoute
 }
 export interface FileRoutesById {
@@ -378,6 +386,7 @@ export interface FileRoutesById {
   '/api/sync-runs/verification': typeof ApiSyncRunsVerificationRoute
   '/api/tag-rules/$id': typeof ApiTagRulesIdRoute
   '/api/team-members/$id': typeof ApiTeamMembersIdRoute
+  '/api/team-members/bootstrap': typeof ApiTeamMembersBootstrapRoute
   '/api/tickets/$id': typeof ApiTicketsIdRoute
 }
 export interface FileRouteTypes {
@@ -422,6 +431,7 @@ export interface FileRouteTypes {
     | '/api/sync-runs/verification'
     | '/api/tag-rules/$id'
     | '/api/team-members/$id'
+    | '/api/team-members/bootstrap'
     | '/api/tickets/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -463,6 +473,7 @@ export interface FileRouteTypes {
     | '/api/sync-runs/verification'
     | '/api/tag-rules/$id'
     | '/api/team-members/$id'
+    | '/api/team-members/bootstrap'
     | '/api/tickets/$id'
   id:
     | '__root__'
@@ -505,6 +516,7 @@ export interface FileRouteTypes {
     | '/api/sync-runs/verification'
     | '/api/tag-rules/$id'
     | '/api/team-members/$id'
+    | '/api/team-members/bootstrap'
     | '/api/tickets/$id'
   fileRoutesById: FileRoutesById
 }
@@ -674,6 +686,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/tickets/$id'
       preLoaderRoute: typeof ApiTicketsIdRouteImport
       parentRoute: typeof ApiTicketsRoute
+    }
+    '/api/team-members/bootstrap': {
+      id: '/api/team-members/bootstrap'
+      path: '/bootstrap'
+      fullPath: '/api/team-members/bootstrap'
+      preLoaderRoute: typeof ApiTeamMembersBootstrapRouteImport
+      parentRoute: typeof ApiTeamMembersRoute
     }
     '/api/team-members/$id': {
       id: '/api/team-members/$id'
@@ -916,10 +935,12 @@ const ApiTagRulesRouteWithChildren = ApiTagRulesRoute._addFileChildren(
 
 interface ApiTeamMembersRouteChildren {
   ApiTeamMembersIdRoute: typeof ApiTeamMembersIdRoute
+  ApiTeamMembersBootstrapRoute: typeof ApiTeamMembersBootstrapRoute
 }
 
 const ApiTeamMembersRouteChildren: ApiTeamMembersRouteChildren = {
   ApiTeamMembersIdRoute: ApiTeamMembersIdRoute,
+  ApiTeamMembersBootstrapRoute: ApiTeamMembersBootstrapRoute,
 }
 
 const ApiTeamMembersRouteWithChildren = ApiTeamMembersRoute._addFileChildren(
