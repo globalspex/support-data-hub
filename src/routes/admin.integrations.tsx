@@ -88,6 +88,8 @@ function ImportHistoryDialog({ source, open, onOpenChange, onDone }: {
         <div className="space-y-2">
           <Label>From date</Label>
           <Input type="date" value={fromDate} max={todayISODate()} onChange={(e) => setFromDate(e.target.value)} />
+          {progress && <p className="text-sm text-muted-foreground">{progress}</p>}
+          {busy && <p className="text-xs text-muted-foreground">Keep this tab open until the import finishes.</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
