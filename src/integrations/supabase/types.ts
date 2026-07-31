@@ -468,6 +468,13 @@ export type Database = {
     }
     Functions: {
       apply_time_logs: { Args: { _source: string }; Returns: number }
+      bootstrap_team_members: {
+        Args: { _source?: string }
+        Returns: {
+          mappings_created: number
+          members_created: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
