@@ -326,6 +326,12 @@ function IntegrationCard({ row, onChange }: { row: IntegrationRow; onChange: () 
           <Button variant="outline" onClick={() => setHistoryOpen(true)} disabled={!!busy || !row.is_enabled}>Import history…</Button>
           <Button variant="outline" onClick={() => setPurgeOpen(true)} disabled={!!busy} className="text-destructive hover:text-destructive">Purge old tickets…</Button>
         </div>
+        {syncProgress && (
+          <div className="rounded-md border bg-muted/40 p-3 text-sm">
+            <div>{syncProgress}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Keep this tab open until the sync finishes.</p>
+          </div>
+        )}
         <div className="text-xs text-muted-foreground space-y-1 pt-2">
           <div>Last tested: {row.last_tested_at ?? '—'}</div>
           <div>Last sync: {row.last_sync_at ?? '—'}</div>
