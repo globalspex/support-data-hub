@@ -3,240 +3,176 @@ import {
   type ConnectionConfig,
   type RawCompany,
   type RawTicket,
+  type RefPageResult,
+  type TimeLogEntry,
   trimBaseUrl,
-} from "./types";
+  fullName,
+} from './types';
 
-async function desk(cfg: ConnectionConfig, path: string, attempt = 0): Promise<unknown> {
+const PAGE_SIZE = 100;
+
+async function desk(cfg: ConnectionConfig, path: string, attempt = 0): Promise<Record<string, unknown>> {
   const url = `${trimBaseUrl(cfg.baseUrl)}/desk/api/v2${path}`;
   const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${cfg.token}`,
-      Accept: "application/json",
-    },
+    headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/json' },
   });
   if (res.status === 429 && attempt < 3) {
     await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
     return desk(cfg, path, attempt + 1);
   }
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
+    const text = await res.text().catch(() => '');
     throw new Error(`Teamwork Desk ${path} failed [${res.status}]: ${text.slice(0, 300)}`);
   }
-  return res.json();
+  return (await res.json()) as Record<string, unknown>;
 }
 
 const iso = (d: Date) => d.toISOString();
 
-/** Page through a Desk endpoint that returns { <listKey>: [...] } and collect all rows. */
-async function fetchAllPaged(
-  cfg: ConnectionConfig,
-  pathBase: string,
-  listKeys: string[],
-  pageSize = 100,
-  maxPages = 200,
-): Promise<Array<Record<string, unknown>>> {
-  const out: Array<Record<string, unknown>> = [];
-  let page = 1;
-  while (page < maxPages) {
-    const sep = pathBase.includes("?") ? "&" : "?";
-    const data = (await desk(
-      cfg,
-      `${pathBase}${sep}page=${page}&pageSize=${pageSize}`,
-    )) as Record<string, unknown>;
-    let list: Array<Record<string, unknown>> | undefined;
-    for (const key of listKeys) {
-      const v = data[key];
-      if (Array.isArray(v)) {
-        list = v as Array<Record<string, unknown>>;
-        break;
-      }
-    }
-    if (!list || list.length === 0) break;
-    out.push(...list);
-    if (list.length < pageSize) break;
-    page++;
+function pick(data: Record<string, unknown>, keys: string[]): Array<Record<string, unknown>> {
+  for (const k of keys) {
+    const v = data[k];
+    if (Array.isArray(v)) return v as Array<Record<string, unknown>>;
   }
-  return out;
+  return [];
 }
 
-function indexById(rows: Array<Record<string, unknown>>): Record<string, Record<string, unknown>> {
-  const map: Record<string, Record<string, unknown>> = {};
-  for (const r of rows) {
-    if (r.id !== undefined && r.id !== null) map[String(r.id)] = r;
-  }
-  return map;
+function hasMoreFrom(data: Record<string, unknown>, rows: number, pageSize: number): boolean {
+  const pag = data.pagination as { hasMorePages?: boolean } | undefined;
+  if (pag && typeof pag.hasMorePages === 'boolean') return pag.hasMorePages;
+  return rows >= pageSize;
 }
 
 export const teamworkDeskAdapter: SourceAdapter = {
-  sourceName: "teamwork_desk",
+  sourceName: 'teamwork_desk',
+  refStages: ['companies', 'customers', 'users', 'tags', 'inboxes', 'tickettypes', 'ticketstatuses'],
 
   async testConnection(cfg) {
     try {
-      await desk(cfg, "/me.json");
-      return { ok: true, message: "Connected to Teamwork Desk" };
+      await desk(cfg, '/me.json');
+      return { ok: true, message: 'Connected to Teamwork Desk' };
     } catch (e) {
       return { ok: false, message: e instanceof Error ? e.message : String(e) };
     }
   },
 
-  async fetchCompanies(cfg) {
-    const rows = await fetchAllPaged(cfg, "/customers/companies.json", ["companies"]);
-    return rows.map((c) => ({
-      externalId: String(c.id),
-      name: String(c.name ?? c.companyName ?? ""),
-      active: true,
-      raw: c,
-    }));
+  async fetchRefPage(cfg, stage, page, refs): Promise<RefPageResult> {
+    const p = `page=${page}&pageSize=${PAGE_SIZE}`;
+
+    if (stage === 'companies') {
+      const data = await desk(cfg, `/companies.json?${p}`);
+      const rows = pick(data, ['companies']);
+      refs.companyNames = refs.companyNames ?? {};
+      const companies: RawCompany[] = [];
+      for (const c of rows) {
+        const id = String(c.id);
+        const name = String(c.name ?? c.companyName ?? '');
+        refs.companyNames[id] = name;
+        companies.push({ externalId: id, name, active: c.state !== 'deleted', raw: c });
+      }
+      return { hasMore: hasMoreFrom(data, rows.length, PAGE_SIZE), companies };
+    }
+
+    if (stage === 'customers') {
+      const data = await desk(cfg, `/customers.json?${p}`);
+      const rows = pick(data, ['customers']);
+      refs.companyIdByCustomer = refs.companyIdByCustomer ?? {};
+      refs.customerNames = refs.customerNames ?? {};
+      for (const c of rows) {
+        const id = String(c.id);
+        const companyId = (c.company as { id?: string | number } | undefined)?.id;
+        if (companyId !== undefined && companyId !== null) {
+          refs.companyIdByCustomer[id] = String(companyId);
+        }
+        const name = fullName(c.firstName, c.lastName) ?? (typeof c.organization === 'string' ? c.organization : null);
+        if (name) refs.customerNames[id] = name;
+      }
+      return { hasMore: hasMoreFrom(data, rows.length, PAGE_SIZE) };
+    }
+
+    if (stage === 'users') {
+      const data = await desk(cfg, `/users.json?${p}`);
+      const rows = pick(data, ['users']);
+      refs.userNames = refs.userNames ?? {};
+      for (const u of rows) {
+        const name = fullName(u.firstName, u.lastName);
+        if (name) refs.userNames[String(u.id)] = name;
+      }
+      return { hasMore: hasMoreFrom(data, rows.length, PAGE_SIZE) };
+    }
+
+    if (stage === 'tags') {
+      const data = await desk(cfg, `/tags.json?${p}`);
+      const rows = pick(data, ['tags']);
+      refs.tagNames = refs.tagNames ?? {};
+      for (const t of rows) if (typeof t.name === 'string') refs.tagNames[String(t.id)] = t.name;
+      return { hasMore: hasMoreFrom(data, rows.length, PAGE_SIZE) };
+    }
+
+    if (stage === 'inboxes') {
+      const data = await desk(cfg, `/inboxes.json?${p}`);
+      const rows = pick(data, ['inboxes']);
+      refs.inboxNames = refs.inboxNames ?? {};
+      for (const i of rows) if (typeof i.name === 'string') refs.inboxNames[String(i.id)] = i.name;
+      return { hasMore: hasMoreFrom(data, rows.length, PAGE_SIZE) };
+    }
+
+    if (stage === 'tickettypes') {
+      const data = await desk(cfg, `/tickettypes.json?${p}`);
+      const rows = pick(data, ['ticketTypes', 'tickettypes']);
+      refs.typeNames = refs.typeNames ?? {};
+      for (const t of rows) if (typeof t.name === 'string') refs.typeNames[String(t.id)] = t.name;
+      return { hasMore: hasMoreFrom(data, rows.length, PAGE_SIZE) };
+    }
+
+    if (stage === 'ticketstatuses') {
+      const data = await desk(cfg, `/ticketstatuses.json?${p}`);
+      const rows = pick(data, ['ticketStatuses', 'ticketstatuses']);
+      refs.statusNames = refs.statusNames ?? {};
+      for (const t of rows) if (typeof t.name === 'string') refs.statusNames[String(t.id)] = t.name;
+      return { hasMore: hasMoreFrom(data, rows.length, PAGE_SIZE) };
+    }
+
+    return { hasMore: false };
   },
 
-  async fetchTickets(cfg, opts) {
-    const out: RawTicket[] = [];
-
-    // Pre-fetch reference data so we can resolve {id,type:"..."} references on tickets.
-    // Teamwork Desk v2 returns related resources as top-level arrays (users, tags, inboxes, etc.),
-    // not nested under `included`, so we resolve them via these maps.
-    const [usersList, tagsList, inboxesList, typesList, statusesList] = await Promise.all([
-      fetchAllPaged(cfg, "/users.json", ["users"]).catch(() => []),
-      fetchAllPaged(cfg, "/tags.json", ["tags"]).catch(() => []),
-      fetchAllPaged(cfg, "/inboxes.json", ["inboxes"]).catch(() => []),
-      fetchAllPaged(cfg, "/tickettypes.json", ["ticketTypes", "tickettypes"]).catch(() => []),
-      fetchAllPaged(cfg, "/ticketstatuses.json", ["ticketStatuses", "ticketstatuses"]).catch(
-        () => [],
-      ),
-    ]);
-
-    const refMaps = {
-      users: indexById(usersList),
-      tags: indexById(tagsList),
-      inboxes: indexById(inboxesList),
-      tickettypes: indexById(typesList),
-      ticketstatuses: indexById(statusesList),
-    };
-
-    let page = 1;
-    const since = opts?.since;
-    const sinceTime = since ? since.getTime() : 0;
-    const sinceParam = since ? `&updatedAfter=${encodeURIComponent(iso(since))}` : "";
-    while (page < 500) {
-      const data = (await desk(
-        cfg,
-        `/tickets.json?page=${page}&pageSize=100&include=customer,inbox,tags,agent,status,type${sinceParam}`,
-      )) as {
-        tickets?: Array<Record<string, unknown>>;
-        included?: Record<string, Record<string, Record<string, unknown>>>;
-        users?: Array<Record<string, unknown>>;
-        tags?: Array<Record<string, unknown>>;
-        inboxes?: Array<Record<string, unknown>>;
-        customers?: Array<Record<string, unknown>>;
-        companies?: Array<Record<string, unknown>>;
-      };
-      const list = data.tickets ?? [];
-      if (list.length === 0) break;
-
-      // Merge per-page sideloaded resources (top-level arrays) into our maps.
-      const pageIncluded: Record<string, Record<string, Record<string, unknown>>> = {
-        ...(data.included ?? {}),
-      };
-      const sideloadKeys: Array<keyof typeof data> = [
-        "users",
-        "tags",
-        "inboxes",
-        "customers",
-        "companies",
-      ];
-      for (const key of sideloadKeys) {
-        const arr = data[key];
-        if (Array.isArray(arr)) {
-          pageIncluded[key as string] = {
-            ...(pageIncluded[key as string] ?? {}),
-            ...indexById(arr as Array<Record<string, unknown>>),
-          };
-        }
-      }
-      // Merge globally fetched ref maps as fallback.
-      for (const [k, m] of Object.entries(refMaps)) {
-        pageIncluded[k] = { ...(m as Record<string, Record<string, unknown>>), ...(pageIncluded[k] ?? {}) };
-      }
-
-      let stopAfterPage = false;
-      for (const t of list) {
-        if (since) {
-          const u = (t.updatedAt as string | undefined) ?? null;
-          if (u) {
-            const ts = Date.parse(u);
-            if (Number.isFinite(ts) && ts < sinceTime) {
-              stopAfterPage = true;
-              continue;
-            }
-          }
-        }
-        out.push({
-          externalId: String(t.id),
-          raw: { ...t, _included: pageIncluded, _ticketTypesById: refMaps.tickettypes },
-        });
-      }
-      if (stopAfterPage) break;
-      if (list.length < 100) break;
-      page++;
-    }
-    return out;
+  async fetchTicketPage(cfg, page, opts) {
+    const since = opts.since;
+    const sinceParam = since ? `&updatedAfter=${encodeURIComponent(iso(since))}` : '';
+    const data = await desk(
+      cfg,
+      `/tickets.json?page=${page}&pageSize=${PAGE_SIZE}&include=customer,inbox,tags,agent,status,type${sinceParam}`,
+    );
+    const rows = pick(data, ['tickets']);
+    const tickets: RawTicket[] = rows.map((t) => ({ externalId: String(t.id), raw: t }));
+    return { tickets, hasMore: hasMoreFrom(data, rows.length, PAGE_SIZE) };
   },
 
-  /**
-   * Sum logged seconds per ticket from /timelogs.json. Returns Map<ticketId, hours>.
-   * Teamwork Desk timelogs return `seconds` per entry. We page newest-first
-   * (orderBy=date desc) and stop once we cross the `since` window — server-side
-   * date filtering on this endpoint is not honored, so client-side cutoff it is.
-   */
-  async fetchTimeEntriesByTaskId(cfg, opts) {
-    const totals = new Map<string, number>();
-    const since = opts?.since;
-    const sinceTime = since ? since.getTime() : 0;
-    let page = 1;
-    let stop = false;
-    while (page < 2000 && !stop) {
-      let data: Record<string, unknown>;
-      try {
-        data = (await desk(
-          cfg,
-          `/timelogs.json?page=${page}&pageSize=100&orderBy=date&orderMode=desc`,
-        )) as Record<string, unknown>;
-      } catch {
-        break;
-      }
-      const list =
-        (data.timelogs as Array<Record<string, unknown>> | undefined) ??
-        (data.timeLogs as Array<Record<string, unknown>> | undefined) ??
-        [];
-      if (list.length === 0) break;
-      for (const tl of list) {
-        if (since) {
-          const d = (tl.date ?? tl.updatedAt ?? tl.createdAt) as string | undefined;
-          if (d) {
-            const ts = Date.parse(d);
-            if (Number.isFinite(ts) && ts < sinceTime) {
-              stop = true;
-              continue;
-            }
-          }
-        }
-        const ticketRef = tl.ticket as { id?: unknown } | undefined;
-        const ticketId = (tl.ticketId ?? ticketRef?.id) as string | number | undefined;
-        if (ticketId === undefined || ticketId === null) continue;
-        const seconds =
-          (typeof tl.seconds === "number" ? (tl.seconds as number) : undefined) ??
-          (typeof tl.time === "number" ? (tl.time as number) * 60 : undefined) ??
-          (typeof tl.minutes === "number" ? (tl.minutes as number) * 60 : undefined) ??
-          (typeof tl.timeSpent === "number" ? (tl.timeSpent as number) : undefined);
-        if (seconds === undefined || !Number.isFinite(seconds)) continue;
-        const hours = seconds / 3600;
-        const key = String(ticketId);
-        totals.set(key, (totals.get(key) ?? 0) + hours);
-      }
-      if (list.length < 100) break;
-      page++;
+  /** Desk timelogs report `seconds` per entry and page oldest-first. */
+  async fetchTimeLogPage(cfg, page) {
+    const data = await desk(cfg, `/timelogs.json?page=${page}&pageSize=${PAGE_SIZE}`);
+    const rows = pick(data, ['timelogs', 'timeLogs']);
+    const entries: TimeLogEntry[] = [];
+    for (const tl of rows) {
+      const ticketId = (tl.ticketId ?? (tl.ticket as { id?: unknown } | undefined)?.id) as
+        | string
+        | number
+        | undefined;
+      if (ticketId === undefined || ticketId === null) continue;
+      const seconds =
+        (typeof tl.seconds === 'number' ? tl.seconds : undefined) ??
+        (typeof tl.minutes === 'number' ? tl.minutes * 60 : undefined) ??
+        (typeof tl.timeSpent === 'number' ? tl.timeSpent : undefined);
+      if (seconds === undefined || !Number.isFinite(seconds) || seconds <= 0) continue;
+      const entryId = tl.id;
+      if (entryId === undefined || entryId === null) continue;
+      entries.push({
+        entryId: String(entryId),
+        ticketId: String(ticketId),
+        hours: seconds / 3600,
+        loggedAt: (tl.date ?? tl.createdAt ?? null) as string | null,
+      });
     }
-    return totals;
+    return { entries, hasMore: hasMoreFrom(data, rows.length, PAGE_SIZE) };
   },
 };
-
