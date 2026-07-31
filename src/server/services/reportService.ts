@@ -28,7 +28,7 @@ function rpcArgs(f: ReportFilters) {
   }
   if (f.year && f.month) {
     dateFrom = new Date(Date.UTC(f.year, f.month - 1, 1)).toISOString();
-    dateTo = new Date(Date.UTC(f.year, f.month, 1) as unknown as number).toISOString();
+    dateTo = new Date(Date.UTC(f.year, f.month, 1)).toISOString();
   }
 
   return {
