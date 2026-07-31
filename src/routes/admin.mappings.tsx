@@ -43,6 +43,7 @@ function MappingsPage() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [autoBusy, setAutoBusy] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bootstrapBusy, setBootstrapBusy] = useState(false);
   const [bulkSelections, setBulkSelections] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
