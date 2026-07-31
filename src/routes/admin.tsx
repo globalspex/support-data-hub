@@ -1,34 +1,12 @@
-import { createFileRoute, Outlet, Link, useNavigate, useLocation } from '@tanstack/react-router';
-import { useEffect } from 'react';
-import { useAuth } from '@/lib/auth';
-import { Button } from '@/components/ui/button';
+import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/admin')({
   component: AdminLayout,
 });
 
 function AdminLayout() {
-  const { user, isAdmin, loading, signOut } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    if (!loading && !user) navigate({ to: '/login' });
-  }, [loading, user, navigate]);
-
-  if (loading) return <div className="p-8 text-muted-foreground">Loading…</div>;
-  if (!user) return null;
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-8 text-center">
-        <div>
-          <h1 className="text-xl font-semibold">Admin access required</h1>
-          <p className="text-muted-foreground mt-2">Your account does not have the admin role.</p>
-          <Button variant="outline" className="mt-4" onClick={() => signOut()}>Sign out</Button>
-        </div>
-      </div>
-    );
-  }
 
   const tabs: Array<{ to: string; label: string; exact?: boolean }> = [
     { to: '/admin', label: 'Dashboard', exact: true },
